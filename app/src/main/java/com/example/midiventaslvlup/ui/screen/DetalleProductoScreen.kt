@@ -2,37 +2,15 @@ package com.example.midiventaslvlup.ui.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,17 +22,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.midiventaslvlup.R
 import com.example.midiventaslvlup.model.local.AppDatabase
-import com.example.midiventaslvlup.viewmodel.DetailsViewModel
-import com.example.midiventaslvlup.viewmodel.DetailsViewModelFactory
+import com.example.midiventaslvlup.viewmodel.DetalleProductoViewModel
+import com.example.midiventaslvlup.viewmodel.DetalleProductoViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailsScreen(modifier: Modifier = Modifier, onProductClick: (Int) -> Unit) {
+fun DetalleProductoScreen(productId: Int, modifier: Modifier = Modifier) {
     var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
-    val viewModel: DetailsViewModel = viewModel(factory = DetailsViewModelFactory(db.expenseDao()))
-    val products by viewModel.products.collectAsState()
+    val viewModel: DetalleProductoViewModel = viewModel(factory = DetalleProductoViewModelFactory(db.expenseDao(), productId))
+    val product by viewModel.product.collectAsState(initial = null)
 
     Scaffold(
         topBar = {
@@ -107,30 +85,31 @@ fun DetailsScreen(modifier: Modifier = Modifier, onProductClick: (Int) -> Unit) 
             )
         }
     ) { paddingValues ->
-        LazyColumn(modifier = modifier.padding(paddingValues)) {
-            items(products) { product ->
-                Card(
+        product?.let {
+            Column(
+                modifier = modifier
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                AsyncImage(
+                    model = it.imagen,
+                    contentDescription = it.nombre,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .clickable { onProductClick(product.id) }
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        AsyncImage(
-                            model = product.imagen,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .height(150.dp)
-                                .fillMaxWidth(),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = product.nombre, style = MaterialTheme.typography.headlineSmall)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = product.descripcion)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = "Precio: $${product.precio}", style = MaterialTheme.typography.bodyLarge)
-                    }
+                        .height(300.dp)
+                        .fillMaxWidth(),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = it.nombre, style = MaterialTheme.typography.headlineLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = it.descripcion, style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "Precio: $${it.precio}", style = MaterialTheme.typography.headlineMedium)
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = { /* Por ahora no hace nada */ }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Agregar al carrito")
                 }
             }
         }
