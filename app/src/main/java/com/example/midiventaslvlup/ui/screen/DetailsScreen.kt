@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,14 +35,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.midiventaslvlup.R
+import com.example.midiventaslvlup.model.local.AppDatabase
+import com.example.midiventaslvlup.viewmodel.DetailsViewModel
+import com.example.midiventaslvlup.viewmodel.DetailsViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailsScreen(modifier: Modifier = Modifier, onNavigateUp: () -> Unit) {
+fun DetailsScreen(modifier: Modifier = Modifier) {
     var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+    val viewModel: DetailsViewModel = viewModel(factory = DetailsViewModelFactory(db.expenseDao()))
+    val products by viewModel.products.collectAsState()
 
     Scaffold(
         topBar = {
@@ -91,10 +106,30 @@ fun DetailsScreen(modifier: Modifier = Modifier, onNavigateUp: () -> Unit) {
             )
         }
     ) { paddingValues ->
-        Column(modifier = modifier.padding(paddingValues)) {
-            Text("Esta es la pantalla de detalles")
-            Button(onClick = onNavigateUp) {
-                Text("Volver")
+        LazyColumn(modifier = modifier.padding(paddingValues)) {
+            items(products) { product ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        AsyncImage(
+                            model = product.imagen,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .height(150.dp)
+                                .fillMaxWidth(),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = product.nombre, style = MaterialTheme.typography.headlineSmall)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = product.descripcion)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = "Precio: $${product.precio}", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
             }
         }
     }

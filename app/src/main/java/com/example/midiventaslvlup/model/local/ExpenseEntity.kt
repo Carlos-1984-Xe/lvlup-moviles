@@ -9,6 +9,8 @@ data class ExpenseEntity(
     val id: Int = 0,
     val nombre: String,
     val categoria: String,
-    val precio: Double,
+    val imagen: String,
+    val descripcion: String,
+    val precio: Int,
     val stock: Int
 )

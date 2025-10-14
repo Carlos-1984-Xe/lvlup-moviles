@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     NavHost(navController = navController, startDestination = "main", modifier = Modifier.padding(innerPadding)) {
                         composable("main") { MainScreen(modifier = Modifier.fillMaxSize(), onNavigateToDetails = { navController.navigate("details") }) }
-                        composable("details") { DetailsScreen(modifier = Modifier.fillMaxSize(), onNavigateUp = { navController.popBackStack() }) }
+                        composable("details") { DetailsScreen(modifier = Modifier.fillMaxSize()) }
                     }
                 }
             }
