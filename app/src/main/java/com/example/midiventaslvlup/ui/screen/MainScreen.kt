@@ -22,7 +22,11 @@ import androidx.compose.ui.unit.dp
 import com.example.midiventaslvlup.R
 
 @Composable
-fun MainScreen(modifier: Modifier = Modifier, onNavigateToDetails: () -> Unit) {
+fun MainScreen(
+    modifier: Modifier = Modifier, 
+    onNavigateToDetails: () -> Unit,
+    onNavigateToAdmin: () -> Unit
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -66,6 +70,10 @@ fun MainScreen(modifier: Modifier = Modifier, onNavigateToDetails: () -> Unit) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = onNavigateToDetails) {
                     Text("Iniciar como invitado")
+                }
+                 Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onNavigateToAdmin) {
+                    Text("Acceder como Administrador")
                 }
             }
         }
