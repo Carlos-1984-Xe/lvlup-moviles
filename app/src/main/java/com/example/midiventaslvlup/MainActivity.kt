@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.midiventaslvlup.ui.screen.AdminScreen
 import com.example.midiventaslvlup.ui.screen.DetalleProductoScreen
 import com.example.midiventaslvlup.ui.screen.DetailsScreen
 import com.example.midiventaslvlup.ui.screen.MainScreen
@@ -48,8 +49,15 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.fillMaxSize(),
                                 onNavigateToDetails = {
                                     navController.navigate("details")
+                                },
+                                onNavigateToAdmin = {
+                                    navController.navigate("admin")
                                 }
                             )
+                        }
+
+                        composable("admin") {
+                            AdminScreen()
                         }
 
                         composable("details") {
