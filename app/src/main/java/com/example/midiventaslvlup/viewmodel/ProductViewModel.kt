@@ -45,11 +45,13 @@ class ProductViewModel(private val productRepository: ProductRepository) : ViewM
     }
 
     fun findProductById(id: Int) {
-        // This requires a new method in the DAO and Repository. Let's assume it for now.
-        // For simplicity, we will find it in the current list.
         viewModelScope.launch {
-            _foundProduct.value = products.value.find { it.id == id }
+            _foundProduct.value = productRepository.findProductById(id)
         }
+    }
+
+    suspend fun findProductByIdOnce(id: Int): ExpenseEntity? {
+        return productRepository.findProductById(id)
     }
 
     fun clearFoundProduct() {
