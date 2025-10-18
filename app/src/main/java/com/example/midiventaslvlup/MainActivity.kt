@@ -60,6 +60,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToProductManagement = { action ->
                                     navController.navigate("productManagement/$action")
+                                },
+                                onNavigateToLogin = {
+                                    navController.navigate("main") { popUpTo("admin") { inclusive = true } }
                                 }
                             )
                         }
