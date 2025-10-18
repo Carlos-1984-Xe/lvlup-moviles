@@ -1,6 +1,7 @@
 package com.example.midiventaslvlup.ui.screen
 
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -32,8 +34,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,13 +64,20 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
+
+    var currentAction by remember { mutableStateOf(action) }
+    var selectedProductId by remember { mutableStateOf<Int?>(null) }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { 
-                    val titleText = when (action) {
+                    val titleText = when (currentAction) {
                         "list" -> "Listado de Productos"
-                        else -> "${action.replaceFirstChar { it.uppercase() }} Producto"
+                        "create" -> "Crear Producto"
+                        "edit" -> "Editar Producto"
+                        "delete" -> "Borrar Producto"
+                        else -> "Producto"
                     }
                     Text(text = titleText)
                 },
@@ -84,11 +96,34 @@ fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            when (action) {
+            when (currentAction) {
                 "create" -> CreateProductForm(onProductCreated = onNavigateBack, onCancel = onNavigateBack)
-                "edit" -> EditProductForm(onProductUpdated = onNavigateBack, onCancel = onNavigateBack)
-                "list" -> ListProducts()
-                "delete" -> DeleteProductForm(onProductDeleted = onNavigateBack, onCancel = onNavigateBack)
+                "edit" -> EditProductForm(
+                    productId = selectedProductId,
+                    onProductUpdated = onNavigateBack, 
+                    onCancel = { 
+                        selectedProductId = null
+                        currentAction = "list"
+                    }
+                )
+                "list" -> ListProducts(
+                    onEditClick = {
+                        selectedProductId = it
+                        currentAction = "edit"
+                    },
+                    onDeleteClick = {
+                        selectedProductId = it
+                        currentAction = "delete"
+                    }
+                )
+                "delete" -> DeleteProductForm(
+                    productId = selectedProductId,
+                    onProductDeleted = onNavigateBack, 
+                    onCancel = {
+                        selectedProductId = null
+                        currentAction = "list"
+                    }
+                )
             }
         }
     }
@@ -192,13 +227,13 @@ private fun CreateProductForm(onProductCreated: () -> Unit, onCancel: () -> Unit
 }
 
 @Composable
-private fun EditProductForm(onProductUpdated: () -> Unit, onCancel: () -> Unit) {
-    Text("Editar Producto")
+private fun EditProductForm(productId: Int?, onProductUpdated: () -> Unit, onCancel: () -> Unit) {
+    Text("Not implemented yet. Product ID: $productId")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ListProducts() {
+private fun ListProducts(onEditClick: (Int) -> Unit, onDeleteClick: (Int) -> Unit) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
     val productRepository = ProductRepository(db.expenseDao())
@@ -208,7 +243,24 @@ private fun ListProducts() {
     val categories by viewModel.categories.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
 
+    var productToShowOptions by remember { mutableStateOf<ExpenseEntity?>(null) }
+
     val allCategories = listOf("Todos") + categories
+
+    if (productToShowOptions != null) {
+        ProductOptionsDialog(
+            product = productToShowOptions!!,
+            onDismiss = { productToShowOptions = null },
+            onEdit = { 
+                onEditClick(productToShowOptions!!.id)
+                productToShowOptions = null 
+            },
+            onDelete = { 
+                onDeleteClick(productToShowOptions!!.id)
+                productToShowOptions = null
+            }
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         LazyRow(
@@ -226,21 +278,26 @@ private fun ListProducts() {
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(products) { product ->
-                ProductItem(product = product)
+                ProductItem(
+                    product = product,
+                    onClick = { productToShowOptions = product }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ProductItem(product: ExpenseEntity) {
+private fun ProductItem(product: ExpenseEntity, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -267,13 +324,37 @@ private fun ProductItem(product: ExpenseEntity) {
 }
 
 @Composable
-private fun DeleteProductForm(onProductDeleted: () -> Unit, onCancel: () -> Unit) {
+private fun ProductOptionsDialog(
+    product: ExpenseEntity,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = product.nombre) },
+        text = { Text("¿Qué deseas hacer con este producto?") },
+        confirmButton = {
+            TextButton(onClick = onEdit) {
+                Text("Editar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDelete) {
+                Text("Eliminar")
+            }
+        }
+    )
+}
+
+@Composable
+private fun DeleteProductForm(productId: Int?, onProductDeleted: () -> Unit, onCancel: () -> Unit) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
     val productRepository = ProductRepository(db.expenseDao())
     val viewModel: ProductViewModel = viewModel(factory = ProductViewModelFactory(productRepository))
     val scope = rememberCoroutineScope()
-    var productId by remember { mutableStateOf("") }
+    var productIdString by remember { mutableStateOf(productId?.toString() ?: "") }
 
     Column(
         modifier = Modifier.padding(16.dp),
@@ -282,8 +363,8 @@ private fun DeleteProductForm(onProductDeleted: () -> Unit, onCancel: () -> Unit
     ) {
         Text("Borrar Producto", style = MaterialTheme.typography.headlineMedium)
         OutlinedTextField(
-            value = productId,
-            onValueChange = { productId = it },
+            value = productIdString,
+            onValueChange = { productIdString = it },
             label = { Text("ID del producto a borrar") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
@@ -294,7 +375,7 @@ private fun DeleteProductForm(onProductDeleted: () -> Unit, onCancel: () -> Unit
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = { 
-                val id = productId.toIntOrNull()
+                val id = productIdString.toIntOrNull()
                 if (id == null) {
                     Toast.makeText(context, "Por favor ingrese un ID válido", Toast.LENGTH_SHORT).show()
                 } else {
