@@ -9,7 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.ShoppingCart  // ← AGREGAR
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,40 +18,39 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight  // ← AGREGAR
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp  // ← AGREGAR
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.midiventaslvlup.R
 import com.example.midiventaslvlup.model.local.AppDatabase
-import com.example.midiventaslvlup.ui.theme.GreenPrimary  // ← AGREGAR
-import com.example.midiventaslvlup.viewmodel.CartViewModel  // ← AGREGAR
+import com.example.midiventaslvlup.ui.theme.GreenPrimary
+import com.example.midiventaslvlup.viewmodel.CartViewModel
 import com.example.midiventaslvlup.viewmodel.DetalleProductoViewModel
 import com.example.midiventaslvlup.viewmodel.DetalleProductoViewModelFactory
-import kotlinx.coroutines.delay  // ← AGREGAR
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleProductoScreen(
     productId: Int,
     modifier: Modifier = Modifier,
-    onNavigateToCart: () -> Unit = {}  // ← AGREGAR ESTE PARÁMETRO
+    onNavigateToCart: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    var showAddedSnackbar by remember { mutableStateOf(false) }  // ← AGREGAR
+    var showAddedSnackbar by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
     val viewModel: DetalleProductoViewModel = viewModel(factory = DetalleProductoViewModelFactory(db.expenseDao(), productId))
     val product by viewModel.product.collectAsState(initial = null)
 
-    // ← AGREGAR: ViewModel del carrito
     val cartViewModel: CartViewModel = viewModel()
     val cartItems by cartViewModel.cartItems.collectAsState(initial = emptyList())
     val itemCount = cartItems.sumOf { it.cantidad }
 
-    val snackbarHostState = remember { SnackbarHostState() }  // ← AGREGAR
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         topBar = {
@@ -89,7 +88,6 @@ fun DetalleProductoScreen(
                             interactionSource = categoriasInteractionSource
                         )
 
-                        // ← AGREGAR: Opción del Carrito en el menú
                         val carritoInteractionSource = remember { MutableInteractionSource() }
                         val isCarritoHovered by carritoInteractionSource.collectIsHoveredAsState()
                         val carritoBackgroundColor = if (isCarritoHovered) Color.LightGray else MaterialTheme.colorScheme.surface
@@ -140,7 +138,18 @@ fun DetalleProductoScreen(
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }  // ← AGREGAR
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                // ✨ SNACKBAR PERSONALIZADO CON COLORES LEGIBLES
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = GreenPrimary, // Fondo verde de tu marca
+                    contentColor = Color.White, // Texto blanco para contraste
+                    actionColor = Color(0xFFB2FF59), // Verde claro para acciones
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
     ) { paddingValues ->
         product?.let {
             Column(
@@ -172,7 +181,6 @@ fun DetalleProductoScreen(
                 )
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // ← ACTUALIZAR: Botón Agregar al carrito funcional
                 Button(
                     onClick = {
                         cartViewModel.addToCart(it)
@@ -182,7 +190,7 @@ fun DetalleProductoScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = GreenPrimary
                     ),
-                    enabled = it.stock > 0  // Deshabilitar si no hay stock
+                    enabled = it.stock > 0
                 ) {
                     Icon(
                         Icons.Default.ShoppingCart,
@@ -199,7 +207,6 @@ fun DetalleProductoScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ← AGREGAR: Botón para ir al carrito
                 OutlinedButton(
                     onClick = onNavigateToCart,
                     modifier = Modifier.fillMaxWidth()
@@ -209,7 +216,6 @@ fun DetalleProductoScreen(
             }
         }
 
-        // ← AGREGAR: Snackbar cuando se agrega al carrito
         LaunchedEffect(showAddedSnackbar) {
             if (showAddedSnackbar) {
                 snackbarHostState.showSnackbar(

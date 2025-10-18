@@ -33,6 +33,9 @@ fun CartScreen(
 
     var showPaymentDialog by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
+    var showSuccessSnackbar by remember { mutableStateOf(false) }  // ← AGREGAR
+
+    val snackbarHostState = remember { SnackbarHostState() }  // ← AGREGAR
 
     Scaffold(
         topBar = {
@@ -47,6 +50,16 @@ fun CartScreen(
                     containerColor = Color(0xFF1A1A1A)
                 )
             )
+        },
+        snackbarHost = {  // ← AGREGAR
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = GreenPrimary,
+                    contentColor = Color.White,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
         },
         containerColor = Color.Black
     ) { padding ->
@@ -90,7 +103,7 @@ fun CartScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Panel de resumen (similar al diseño de React)
+                // Panel de resumen
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -201,7 +214,7 @@ fun CartScreen(
                     onClick = {
                         viewModel.processPayment {
                             showPaymentDialog = false
-                            // Aquí puedes navegar a una pantalla de confirmación
+                            showSuccessSnackbar = true  // ← ACTUALIZAR
                         }
                     }
                 ) {
@@ -239,5 +252,15 @@ fun CartScreen(
             }
         )
     }
-}
 
+    // ← AGREGAR: Snackbar de éxito
+    LaunchedEffect(showSuccessSnackbar) {
+        if (showSuccessSnackbar) {
+            snackbarHostState.showSnackbar(
+                message = "¡Pago realizado con éxito! Stock actualizado ✓",
+                duration = SnackbarDuration.Long
+            )
+            showSuccessSnackbar = false
+        }
+    }
+}

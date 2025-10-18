@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 class CartViewModel(application: Application) : AndroidViewModel(application) {
 
     private val cartDao = AppDatabase.getDatabase(application).cartDao()
+    private val expenseDao = AppDatabase.getDatabase(application).expenseDao()
 
     // Estado del carrito
     private val _cartItems = MutableStateFlow<List<CartItemEntity>>(emptyList())
@@ -151,16 +152,49 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
         _finalTotal.value = (_cartTotal.value - _discount.value).coerceAtLeast(0)
     }
 
-    // Procesar pago
+    // ✨ PROCESAR PAGO Y ACTUALIZAR STOCK
     fun processPayment(onSuccess: () -> Unit) {
         viewModelScope.launch {
-            // Aquí puedes agregar lógica de pago (API, etc.)
-            // Por ahora solo simulamos el proceso
+            try {
+                val items = _cartItems.value
 
-            // Limpiar carrito después del pago
-            clearCart()
-            onSuccess()
+                // 1. Verificar que hay suficiente stock para todos los productos
+                for (item in items) {
+                    val producto = expenseDao.findExpenseById(item.productoId)
+
+                    if (producto == null) {
+                        // Producto no encontrado
+                        return@launch
+                    }
+
+                    if (producto.stock < item.cantidad) {
+                        // Stock insuficiente
+                        return@launch
+                    }
+                }
+
+                // 2. Actualizar el stock de cada producto
+                for (item in items) {
+                    val producto = expenseDao.findExpenseById(item.productoId)
+
+                    if (producto != null) {
+                        val productoActualizado = producto.copy(
+                            stock = producto.stock - item.cantidad
+                        )
+                        expenseDao.update(productoActualizado)
+                    }
+                }
+
+                // 3. Limpiar el carrito
+                clearCart()
+
+                // 4. Llamar callback de éxito
+                onSuccess()
+
+            } catch (e: Exception) {
+                // Manejar error si algo falla
+                e.printStackTrace()
+            }
         }
     }
 }
-
