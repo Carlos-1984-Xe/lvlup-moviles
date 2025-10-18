@@ -1,6 +1,7 @@
 package com.example.midiventaslvlup.viewmodel
 
 import android.app.Application
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.midiventaslvlup.model.local.AppDatabase
@@ -18,7 +19,7 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
 
     // Estado del carrito
     private val _cartItems = MutableStateFlow<List<CartItemEntity>>(emptyList())
-    val cartItems: StateFlow<List<CartItemEntity>> = _cartItems
+    val cartItems: StateFlow<List<CartItemEntity>> = _cartItems.asStateFlow()
 
     // Total del carrito
     private val _cartTotal = MutableStateFlow(0)
@@ -55,18 +56,24 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
     // Agregar producto al carrito
     fun addToCart(producto: ExpenseEntity) {
         viewModelScope.launch {
-            // Verificar si el producto ya está en el carrito
+            if (producto.stock <= 0) {
+                Toast.makeText(getApplication(), "Producto sin stock", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
             val existingItem = cartDao.getCartItemByProductoId(producto.id)
 
             if (existingItem != null) {
-                // Si ya existe, aumentar la cantidad
-                val updatedItem = existingItem.copy(
-                    cantidad = existingItem.cantidad + 1,
-                    subtotal = producto.precio * (existingItem.cantidad + 1)
-                )
-                cartDao.updateCartItem(updatedItem)
+                if (existingItem.cantidad < producto.stock) {
+                    val updatedItem = existingItem.copy(
+                        cantidad = existingItem.cantidad + 1,
+                        subtotal = producto.precio * (existingItem.cantidad + 1)
+                    )
+                    cartDao.updateCartItem(updatedItem)
+                } else {
+                    Toast.makeText(getApplication(), "No puedes agregar más, stock máximo alcanzado", Toast.LENGTH_SHORT).show()
+                }
             } else {
-                // Si no existe, agregar nuevo item
                 val newItem = CartItemEntity(
                     productoId = producto.id,
                     nombre = producto.nombre,
@@ -85,11 +92,16 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
     // Aumentar cantidad de un item
     fun increaseQuantity(item: CartItemEntity) {
         viewModelScope.launch {
-            val updatedItem = item.copy(
-                cantidad = item.cantidad + 1,
-                subtotal = item.precio * (item.cantidad + 1)
-            )
-            cartDao.updateCartItem(updatedItem)
+            val product = expenseDao.findExpenseById(item.productoId)
+            if (product != null && item.cantidad < product.stock) {
+                val updatedItem = item.copy(
+                    cantidad = item.cantidad + 1,
+                    subtotal = item.precio * (item.cantidad + 1)
+                )
+                cartDao.updateCartItem(updatedItem)
+            } else {
+                Toast.makeText(getApplication(), "No puedes agregar más, stock máximo alcanzado", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -135,12 +147,11 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
     fun applyCoupon() {
         val code = _couponCode.value.trim().uppercase()
 
-        // Cupones de ejemplo - puedes agregar más o conectarlo a una API
         _discount.value = when (code) {
             "DESCUENTO10" -> (_cartTotal.value * 0.10).toInt()
             "DESCUENTO20" -> (_cartTotal.value * 0.20).toInt()
             "PRIMERACOMPRA" -> (_cartTotal.value * 0.15).toInt()
-            "LVLUP50" -> 5000  // Descuento fijo de $5000
+            "LVLUP50" -> 5000
             else -> 0
         }
 
@@ -161,14 +172,12 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
                 // 1. Verificar que hay suficiente stock para todos los productos
                 for (item in items) {
                     val producto = expenseDao.findExpenseById(item.productoId)
-
                     if (producto == null) {
-                        // Producto no encontrado
+                        Toast.makeText(getApplication(), "El producto '${item.nombre}' ya no existe.", Toast.LENGTH_LONG).show()
                         return@launch
                     }
-
                     if (producto.stock < item.cantidad) {
-                        // Stock insuficiente
+                        Toast.makeText(getApplication(), "Stock insuficiente para '${item.nombre}'. Solo quedan ${producto.stock}.", Toast.LENGTH_LONG).show()
                         return@launch
                     }
                 }
@@ -176,7 +185,6 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
                 // 2. Actualizar el stock de cada producto
                 for (item in items) {
                     val producto = expenseDao.findExpenseById(item.productoId)
-
                     if (producto != null) {
                         val productoActualizado = producto.copy(
                             stock = producto.stock - item.cantidad
