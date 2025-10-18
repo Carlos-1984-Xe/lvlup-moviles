@@ -56,6 +56,9 @@ import com.example.midiventaslvlup.viewmodel.LoginViewModel
 import com.example.midiventaslvlup.viewmodel.UserViewModel
 import com.example.midiventaslvlup.viewmodel.UserViewModelFactory
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,6 +113,7 @@ private fun CreateUserForm(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rut by remember { mutableStateOf("") }
+    var fechaNacimiento by remember { mutableStateOf("") }
     var isAdmin by remember { mutableStateOf(false) }
 
     Column(
@@ -146,6 +150,12 @@ private fun CreateUserForm(
             label = { Text("RUT") },
             modifier = Modifier.fillMaxWidth()
         )
+        OutlinedTextField(
+            value = fechaNacimiento,
+            onValueChange = { fechaNacimiento = it },
+            label = { Text("Fecha Nacimiento (DD/MM/YYYY)") },
+            modifier = Modifier.fillMaxWidth()
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = isAdmin, onCheckedChange = { isAdmin = it })
             Text("Es Administrador")
@@ -157,14 +167,17 @@ private fun CreateUserForm(
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = { 
-                if (name.isBlank() || email.isBlank() || password.isBlank() || rut.isBlank()) {
+                if (name.isBlank() || email.isBlank() || password.isBlank() || rut.isBlank() || fechaNacimiento.isBlank()) {
                     Toast.makeText(context, "Por favor, complete todos los campos", Toast.LENGTH_SHORT).show()
                 } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                     Toast.makeText(context, "Por favor, ingrese un formato de correo válido", Toast.LENGTH_SHORT).show()
                 } else if (!isValidChileanRut(rut)) {
                     Toast.makeText(context, "Por favor, ingrese un RUT chileno válido", Toast.LENGTH_SHORT).show()
+                } else if (!isOfLegalAge(fechaNacimiento)) {
+                    Toast.makeText(context, "Debe ser mayor de 18 años", Toast.LENGTH_SHORT).show()
                 } else {
                     scope.launch {
+                        val birthDateMillis = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(fechaNacimiento)?.time ?: 0L
                         val user = UserEntity(
                             nombre = name.split(" ").first(),
                             apellido = name.split(" ").getOrElse(1) { "" },
@@ -172,7 +185,7 @@ private fun CreateUserForm(
                             contrasena = password,
                             rol = if (isAdmin) "administrador" else "cliente",
                             telefono = "",
-                            fechaNacimiento = 0L,
+                            fechaNacimiento = birthDateMillis,
                             direccion = "",
                             rut = rut,
                             region = "",
@@ -214,6 +227,7 @@ private fun EditUserForm(onUserUpdated: () -> Unit, onCancel: () -> Unit) {
     var rut by remember { mutableStateOf("") }
     var region by remember { mutableStateOf("") }
     var comuna by remember { mutableStateOf("") }
+    var fechaNacimiento by remember { mutableStateOf("") }
 
     var searchAttempted by remember { mutableStateOf(false) }
 
@@ -230,6 +244,7 @@ private fun EditUserForm(onUserUpdated: () -> Unit, onCancel: () -> Unit) {
                 rut = it.rut
                 region = it.region
                 comuna = it.comuna
+                fechaNacimiento = if (it.fechaNacimiento > 0) SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it.fechaNacimiento) else ""
                 password = "" // Clear password field
                 Toast.makeText(context, "Usuario encontrado", Toast.LENGTH_SHORT).show()
             } ?: Toast.makeText(context, "Usuario no encontrado", Toast.LENGTH_SHORT).show()
@@ -280,99 +295,38 @@ private fun EditUserForm(onUserUpdated: () -> Unit, onCancel: () -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Nombre Completo") },
-            enabled = isFormEnabled,
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            enabled = isFormEnabled,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-        )
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Nueva Contraseña (opcional)") },
-            visualTransformation = PasswordVisualTransformation(),
-            enabled = isFormEnabled,
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = telefono,
-            onValueChange = { telefono = it },
-            label = { Text("Teléfono") },
-            enabled = isFormEnabled,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-        )
-        OutlinedTextField(
-            value = rut,
-            onValueChange = { rut = it },
-            label = { Text("RUT") },
-            enabled = isFormEnabled,
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = direccion,
-            onValueChange = { direccion = it },
-            label = { Text("Dirección") },
-            enabled = isFormEnabled,
-            modifier = Modifier.fillMaxWidth()
-        )
-         OutlinedTextField(
-            value = region,
-            onValueChange = { region = it },
-            label = { Text("Región") },
-            enabled = isFormEnabled,
-            modifier = Modifier.fillMaxWidth()
-        )
-         OutlinedTextField(
-            value = comuna,
-            onValueChange = { comuna = it },
-            label = { Text("Comuna") },
-            enabled = isFormEnabled,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Row(
-            verticalAlignment = Alignment.CenterVertically, 
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Checkbox(
-                checked = isAdmin, 
-                onCheckedChange = { isAdmin = it },
-                enabled = isFormEnabled
-            )
+        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, enabled = isFormEnabled, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, enabled = isFormEnabled, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
+        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Nueva Contraseña (opcional)") }, visualTransformation = PasswordVisualTransformation(), enabled = isFormEnabled, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = telefono, onValueChange = { telefono = it }, label = { Text("Teléfono") }, enabled = isFormEnabled, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+        OutlinedTextField(value = rut, onValueChange = { rut = it }, label = { Text("RUT") }, enabled = isFormEnabled, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = fechaNacimiento, onValueChange = { fechaNacimiento = it }, label = { Text("Fecha Nacimiento (DD/MM/YYYY)") }, enabled = isFormEnabled, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = direccion, onValueChange = { direccion = it }, label = { Text("Dirección") }, enabled = isFormEnabled, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = region, onValueChange = { region = it }, label = { Text("Región") }, enabled = isFormEnabled, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = comuna, onValueChange = { comuna = it }, label = { Text("Comuna") }, enabled = isFormEnabled, modifier = Modifier.fillMaxWidth())
+        
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Checkbox(checked = isAdmin, onCheckedChange = { isAdmin = it }, enabled = isFormEnabled)
             Text("Es Administrador")
         }
 
         Row {
-            Button(
-                onClick = {
-                    viewModel.clearFoundUser()
-                    onCancel()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Cancelar")
-            }
+            Button(onClick = { viewModel.clearFoundUser(); onCancel() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Cancelar") }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
-                    if (name.isBlank() || email.isBlank()) {
+                    if (name.isBlank() || email.isBlank() || rut.isBlank() || fechaNacimiento.isBlank()) {
                         Toast.makeText(context, "Por favor, complete todos los campos obligatorios", Toast.LENGTH_SHORT).show()
                     } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                         Toast.makeText(context, "Por favor, ingrese un formato de correo válido", Toast.LENGTH_SHORT).show()
-                    } else if (rut.isNotBlank() && !isValidChileanRut(rut)) {
+                    } else if (!isValidChileanRut(rut)) {
                         Toast.makeText(context, "Por favor, ingrese un RUT chileno válido", Toast.LENGTH_SHORT).show()
+                    } else if (!isOfLegalAge(fechaNacimiento)) {
+                        Toast.makeText(context, "Debe ser mayor de 18 años", Toast.LENGTH_SHORT).show()
                     } else {
                         foundUser?.let { userToUpdate ->
                             scope.launch {
+                                val birthDateMillis = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(fechaNacimiento)?.time ?: userToUpdate.fechaNacimiento
                                 val updatedUser = userToUpdate.copy(
                                     nombre = name.split(" ").firstOrNull() ?: "",
                                     apellido = name.split(" ").getOrNull(1) ?: "",
@@ -383,7 +337,8 @@ private fun EditUserForm(onUserUpdated: () -> Unit, onCancel: () -> Unit) {
                                     direccion = direccion,
                                     rut = rut,
                                     region = region,
-                                    comuna = comuna
+                                    comuna = comuna,
+                                    fechaNacimiento = birthDateMillis
                                 )
                                 viewModel.updateUser(updatedUser)
                                 Toast.makeText(context, "Usuario actualizado", Toast.LENGTH_SHORT).show()
@@ -409,42 +364,21 @@ private fun ListUsers() {
 
     val users by viewModel.users.collectAsState()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        items(users) { user ->
-            UserItem(user = user)
-        }
+    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(16.dp)) {
+        items(users) { user -> UserItem(user = user) }
     }
 }
 
 @Composable
 fun UserItem(user: UserEntity) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = "${user.nombre} ${user.apellido}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text = "${user.nombre} ${user.apellido}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(text = user.correo, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = user.rol.replaceFirstChar { it.uppercase() }, 
-                style = MaterialTheme.typography.bodySmall,
-                color = if (user.rol == "administrador") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            )
+            Text(text = user.rol.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = if (user.rol == "administrador") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
         }
     }
 }
-
 
 @Composable
 private fun DeleteUserForm(onUserDeleted: () -> Unit, onCancel: () -> Unit) {
@@ -459,24 +393,11 @@ private fun DeleteUserForm(onUserDeleted: () -> Unit, onCancel: () -> Unit) {
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
 
-    Column(
-        modifier = Modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Borrar Usuario", style = MaterialTheme.typography.headlineMedium)
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email del usuario a borrar.") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth()
-        )
+        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email del usuario a borrar.") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
         Row {
-             Button(onClick = onCancel,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
-                Text("Cancelar")
-            }
+            Button(onClick = onCancel, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Cancelar") }
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = { 
                 val emailToDelete = email.trim()
@@ -535,5 +456,24 @@ private fun isValidChileanRut(rut: String): Boolean {
         return dv == expectedDv
     } catch (e: Exception) {
         return false
+    }
+}
+
+private fun isOfLegalAge(birthDateStr: String): Boolean {
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    dateFormat.isLenient = false
+    return try {
+        val birthDate = dateFormat.parse(birthDateStr) ?: return false
+        val today = Calendar.getInstance()
+        val birth = Calendar.getInstance()
+        birth.time = birthDate
+
+        var age = today.get(Calendar.YEAR) - birth.get(Calendar.YEAR)
+        if (today.get(Calendar.DAY_OF_YEAR) < birth.get(Calendar.DAY_OF_YEAR)) {
+            age--
+        }
+        age >= 18
+    } catch (e: Exception) {
+        false
     }
 }
