@@ -18,6 +18,7 @@ import com.example.midiventaslvlup.ui.screen.CartScreen
 import com.example.midiventaslvlup.ui.screen.DetalleProductoScreen
 import com.example.midiventaslvlup.ui.screen.DetailsScreen
 import com.example.midiventaslvlup.ui.screen.MainScreen
+import com.example.midiventaslvlup.ui.screen.ProductManagementScreen
 import com.example.midiventaslvlup.ui.screen.SplashScreen
 import com.example.midiventaslvlup.ui.screen.UserManagementScreen
 import com.example.midiventaslvlup.ui.theme.LevelUpGamerTheme
@@ -38,9 +39,7 @@ class MainActivity : ComponentActivity() {
                         composable("splash") {
                             SplashScreen(
                                 onSplashFinished = {
-                                    navController.navigate("main") {
-                                        popUpTo("splash") { inclusive = true }
-                                    }
+                                    navController.navigate("main") { popUpTo("splash") { inclusive = true } }
                                 }
                             )
                         }
@@ -48,22 +47,21 @@ class MainActivity : ComponentActivity() {
                         composable("main") {
                             MainScreen(
                                 modifier = Modifier.fillMaxSize(),
-                                onNavigateToDetails = {
-                                    navController.navigate("details")
-                                },
-                                onNavigateToAdmin = {
-                                    navController.navigate("admin")
-                                },
-                                onNavigateToCart = {  // ← AGREGAR ESTE PARÁMETRO
-                                    navController.navigate("cart")
-                                }
+                                onNavigateToDetails = { navController.navigate("details") },
+                                onNavigateToAdmin = { navController.navigate("admin") },
+                                onNavigateToCart = { navController.navigate("cart") }
                             )
                         }
 
                         composable("admin") {
-                            AdminScreen(onNavigateToUserManagement = { action ->
-                                navController.navigate("userManagement/$action")
-                            })
+                            AdminScreen(
+                                onNavigateToUserManagement = { action ->
+                                    navController.navigate("userManagement/$action")
+                                },
+                                onNavigateToProductManagement = { action ->
+                                    navController.navigate("productManagement/$action")
+                                }
+                            )
                         }
 
                         composable(
@@ -77,15 +75,24 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        composable(
+                            route = "productManagement/{action}",
+                            arguments = listOf(navArgument("action") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val action = backStackEntry.arguments?.getString("action") ?: ""
+                            ProductManagementScreen(
+                                action = action,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+
                         composable("details") {
                             DetailsScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 onProductClick = { productId ->
                                     navController.navigate("productDetail/$productId")
                                 },
-                                onNavigateToCart = {  // ← AGREGAR ESTE PARÁMETRO
-                                    navController.navigate("cart")
-                                }
+                                onNavigateToCart = { navController.navigate("cart") }
                             )
                         }
 
@@ -97,18 +104,13 @@ class MainActivity : ComponentActivity() {
                             DetalleProductoScreen(
                                 productId = productId,
                                 modifier = Modifier.fillMaxSize(),
-                                onNavigateToCart = {  // ← AGREGAR ESTE PARÁMETRO
-                                    navController.navigate("cart")
-                                }
+                                onNavigateToCart = { navController.navigate("cart") }
                             )
                         }
 
-                        // ← AGREGAR ESTA NUEVA RUTA DEL CARRITO
                         composable("cart") {
                             CartScreen(
-                                onNavigateBack = {
-                                    navController.popBackStack()
-                                }
+                                onNavigateBack = { navController.popBackStack() }
                             )
                         }
                     }

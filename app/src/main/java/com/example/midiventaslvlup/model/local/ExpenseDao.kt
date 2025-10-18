@@ -27,4 +27,13 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM productos WHERE id = :id")
     fun getExpenseById(id: Int): Flow<ExpenseEntity>
+
+    @Query("SELECT * FROM productos WHERE id = :id")
+    suspend fun findExpenseById(id: Int): ExpenseEntity?
+
+    @Query("SELECT * FROM productos WHERE categoria = :category")
+    fun getExpensesByCategory(category: String): Flow<List<ExpenseEntity>>
+
+    @Query("SELECT DISTINCT categoria FROM productos ORDER BY categoria ASC")
+    fun getAllCategories(): Flow<List<String>>
 }

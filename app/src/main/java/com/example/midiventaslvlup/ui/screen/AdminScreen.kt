@@ -45,7 +45,10 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminScreen(onNavigateToUserManagement: (String) -> Unit) {
+fun AdminScreen(
+    onNavigateToUserManagement: (String) -> Unit,
+    onNavigateToProductManagement: (String) -> Unit
+) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var selectedOption by remember { mutableStateOf("Home") }
@@ -159,19 +162,19 @@ fun AdminScreen(onNavigateToUserManagement: (String) -> Unit) {
                     }
                     "ProductAdmin" -> {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Button(onClick = { /* TODO */ }) {
+                            Button(onClick = { onNavigateToProductManagement("create") }) {
                                 Text("Crear producto")
                             }
                             Spacer(modifier = Modifier.size(16.dp))
-                            Button(onClick = { /* TODO */ }) {
+                            Button(onClick = { onNavigateToProductManagement("edit") }) {
                                 Text("Editar producto")
                             }
                             Spacer(modifier = Modifier.size(16.dp))
-                            Button(onClick = { /* TODO */ }) {
+                            Button(onClick = { onNavigateToProductManagement("list") }) {
                                 Text("Listar producto")
                             }
                             Spacer(modifier = Modifier.size(16.dp))
-                            Button(onClick = { /* TODO */ }) {
+                            Button(onClick = { onNavigateToProductManagement("delete") }) {
                                 Text("Borrar producto")
                             }
                         }
@@ -197,5 +200,5 @@ fun AdminScreen(onNavigateToUserManagement: (String) -> Unit) {
 @Preview(showBackground = true)
 @Composable
 fun AdminScreenPreview() {
-    AdminScreen(onNavigateToUserManagement = {})
+    AdminScreen(onNavigateToUserManagement = {}, onNavigateToProductManagement = {})
 }
