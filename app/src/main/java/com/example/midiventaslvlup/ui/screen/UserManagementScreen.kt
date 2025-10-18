@@ -373,7 +373,7 @@ private fun DeleteUserForm(onUserDeleted: () -> Unit, onCancel: () -> Unit) {
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email del usuario a borrar") }
+            label = { Text("Email del usuario a borrar.") }
         )
         Row {
              Button(onClick = onCancel,
