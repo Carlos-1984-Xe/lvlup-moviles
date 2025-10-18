@@ -2,7 +2,6 @@ package com.example.midiventaslvlup.model.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.Date
 
 @Entity(tableName = "users")
 data class UserEntity(
@@ -18,5 +17,5 @@ data class UserEntity(
     val rut: String,
     val region: String,
     val comuna: String,
-    val rol: String
+    val rol: String  // "administrador" o "cliente"
 )
