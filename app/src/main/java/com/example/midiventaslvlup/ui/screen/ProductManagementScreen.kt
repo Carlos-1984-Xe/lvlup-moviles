@@ -68,6 +68,11 @@ fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
     var currentAction by remember { mutableStateOf(action) }
     var selectedProductId by remember { mutableStateOf<Int?>(null) }
 
+    val context = LocalContext.current
+    val db = AppDatabase.getDatabase(context)
+    val productRepository = ProductRepository(db.expenseDao())
+    val viewModel: ProductViewModel = viewModel(factory = ProductViewModelFactory(productRepository))
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -97,16 +102,22 @@ fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
             verticalArrangement = Arrangement.Top
         ) {
             when (currentAction) {
-                "create" -> CreateProductForm(onProductCreated = onNavigateBack, onCancel = onNavigateBack)
+                "create" -> CreateProductForm(
+                    viewModel = viewModel,
+                    onProductCreated = onNavigateBack, 
+                    onCancel = onNavigateBack
+                )
                 "edit" -> EditProductForm(
+                    viewModel = viewModel,
                     productId = selectedProductId,
-                    onProductUpdated = onNavigateBack, 
+                    onProductUpdated = { currentAction = "list" }, 
                     onCancel = { 
                         selectedProductId = null
                         currentAction = "list"
                     }
                 )
                 "list" -> ListProducts(
+                    viewModel = viewModel,
                     onEditClick = {
                         selectedProductId = it
                         currentAction = "edit"
@@ -117,9 +128,10 @@ fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
                     }
                 )
                 "delete" -> DeleteProductForm(
+                    viewModel = viewModel,
                     productId = selectedProductId,
-                    onProductDeleted = onNavigateBack, 
-                    onCancel = {
+                    onProductDeleted = { currentAction = "list" }, 
+                    onCancel = { 
                         selectedProductId = null
                         currentAction = "list"
                     }
@@ -130,11 +142,8 @@ fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
 }
 
 @Composable
-private fun CreateProductForm(onProductCreated: () -> Unit, onCancel: () -> Unit) {
+private fun CreateProductForm(viewModel: ProductViewModel, onProductCreated: () -> Unit, onCancel: () -> Unit) {
     val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val productRepository = ProductRepository(db.expenseDao())
-    val viewModel: ProductViewModel = viewModel(factory = ProductViewModelFactory(productRepository))
     val scope = rememberCoroutineScope()
 
     var nombre by remember { mutableStateOf("") }
@@ -227,18 +236,111 @@ private fun CreateProductForm(onProductCreated: () -> Unit, onCancel: () -> Unit
 }
 
 @Composable
-private fun EditProductForm(productId: Int?, onProductUpdated: () -> Unit, onCancel: () -> Unit) {
-    Text("Not implemented yet. Product ID: $productId")
+private fun EditProductForm(
+    viewModel: ProductViewModel, 
+    productId: Int?, 
+    onProductUpdated: () -> Unit, 
+    onCancel: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val productToEdit by viewModel.foundProduct.collectAsState()
+
+    var nombre by remember { mutableStateOf("") }
+    var categoria by remember { mutableStateOf("") }
+    var imagen by remember { mutableStateOf("") }
+    var descripcion by remember { mutableStateOf("") }
+    var precio by remember { mutableStateOf("") }
+    var stock by remember { mutableStateOf("") }
+
+    LaunchedEffect(key1 = productId) {
+        if (productId != null) {
+            viewModel.findProductById(productId)
+        } else {
+            onCancel() // Should not happen, but as a safeguard
+        }
+    }
+
+    LaunchedEffect(key1 = productToEdit) {
+        productToEdit?.let {
+            nombre = it.nombre
+            categoria = it.categoria
+            imagen = it.imagen
+            descripcion = it.descripcion
+            precio = it.precio.toString()
+            stock = it.stock.toString()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearFoundProduct()
+        }
+    }
+
+    if (productToEdit == null) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Cargando producto...")
+        }
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text("Editando: ${productToEdit?.nombre}", style = MaterialTheme.typography.headlineMedium)
+
+        OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = categoria, onValueChange = { categoria = it }, label = { Text("Categoría") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = imagen, onValueChange = { imagen = it }, label = { Text("URL de la imagen") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = precio, onValueChange = { precio = it }, label = { Text("Precio") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+        OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("Stock") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+
+        Row {
+            Button(onClick = onCancel, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                Text("Cancelar")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = { 
+                val precioInt = precio.toIntOrNull()
+                val stockInt = stock.toIntOrNull()
+
+                if (nombre.isBlank() || categoria.isBlank() || imagen.isBlank() || descripcion.isBlank() || precioInt == null || stockInt == null) {
+                    Toast.makeText(context, "Por favor, complete todos los campos", Toast.LENGTH_SHORT).show()
+                } else {
+                    scope.launch {
+                        val updatedProduct = productToEdit!!.copy(
+                            nombre = nombre,
+                            categoria = categoria,
+                            imagen = imagen,
+                            descripcion = descripcion,
+                            precio = precioInt,
+                            stock = stockInt
+                        )
+                        viewModel.updateProduct(updatedProduct)
+                        Toast.makeText(context, "Producto actualizado", Toast.LENGTH_SHORT).show()
+                        onProductUpdated()
+                    }
+                }
+            }) {
+                Text("Guardar")
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ListProducts(onEditClick: (Int) -> Unit, onDeleteClick: (Int) -> Unit) {
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val productRepository = ProductRepository(db.expenseDao())
-    val viewModel: ProductViewModel = viewModel(factory = ProductViewModelFactory(productRepository))
-
+private fun ListProducts(viewModel: ProductViewModel, onEditClick: (Int) -> Unit, onDeleteClick: (Int) -> Unit) {
     val products by viewModel.products.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
@@ -348,11 +450,8 @@ private fun ProductOptionsDialog(
 }
 
 @Composable
-private fun DeleteProductForm(productId: Int?, onProductDeleted: () -> Unit, onCancel: () -> Unit) {
+private fun DeleteProductForm(viewModel: ProductViewModel, productId: Int?, onProductDeleted: () -> Unit, onCancel: () -> Unit) {
     val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val productRepository = ProductRepository(db.expenseDao())
-    val viewModel: ProductViewModel = viewModel(factory = ProductViewModelFactory(productRepository))
     val scope = rememberCoroutineScope()
     var productIdString by remember { mutableStateOf(productId?.toString() ?: "") }
 
@@ -380,7 +479,7 @@ private fun DeleteProductForm(productId: Int?, onProductDeleted: () -> Unit, onC
                     Toast.makeText(context, "Por favor ingrese un ID válido", Toast.LENGTH_SHORT).show()
                 } else {
                     scope.launch {
-                        val productToDelete = productRepository.findProductById(id)
+                        val productToDelete = viewModel.findProductByIdOnce(id)
                         if (productToDelete != null) {
                             viewModel.deleteProduct(productToDelete)
                             Toast.makeText(context, "Producto borrado exitosamente", Toast.LENGTH_SHORT).show()
