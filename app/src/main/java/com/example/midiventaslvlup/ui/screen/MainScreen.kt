@@ -23,9 +23,10 @@ import com.example.midiventaslvlup.R
 
 @Composable
 fun MainScreen(
-    modifier: Modifier = Modifier, 
+    modifier: Modifier = Modifier,
     onNavigateToDetails: () -> Unit,
-    onNavigateToAdmin: () -> Unit
+    onNavigateToAdmin: () -> Unit,
+    onNavigateToCart: () -> Unit = {}  // ← AGREGAR ESTE PARÁMETRO
 ) {
     Column(
         modifier = modifier
@@ -65,13 +66,12 @@ fun MainScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = onNavigateToDetails) {
                     Text("Iniciar Sesión")
-
                 }
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = onNavigateToDetails) {
                     Text("Iniciar como invitado")
                 }
-                 Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = onNavigateToAdmin) {
                     Text("Acceder como Administrador")
                 }
