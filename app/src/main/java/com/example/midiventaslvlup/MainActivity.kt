@@ -14,11 +14,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.midiventaslvlup.ui.screen.AdminScreen
-import com.example.midiventaslvlup.ui.screen.CartScreen  // ← AGREGUE ESTE IMPORT
+import com.example.midiventaslvlup.ui.screen.CartScreen
 import com.example.midiventaslvlup.ui.screen.DetalleProductoScreen
 import com.example.midiventaslvlup.ui.screen.DetailsScreen
 import com.example.midiventaslvlup.ui.screen.MainScreen
 import com.example.midiventaslvlup.ui.screen.SplashScreen
+import com.example.midiventaslvlup.ui.screen.UserManagementScreen
 import com.example.midiventaslvlup.ui.theme.LevelUpGamerTheme
 
 class MainActivity : ComponentActivity() {
@@ -60,7 +61,20 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("admin") {
-                            AdminScreen()
+                            AdminScreen(onNavigateToUserManagement = { action ->
+                                navController.navigate("userManagement/$action")
+                            })
+                        }
+
+                        composable(
+                            route = "userManagement/{action}",
+                            arguments = listOf(navArgument("action") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val action = backStackEntry.arguments?.getString("action") ?: ""
+                            UserManagementScreen(
+                                action = action,
+                                onNavigateBack = { navController.popBackStack() }
+                            )
                         }
 
                         composable("details") {

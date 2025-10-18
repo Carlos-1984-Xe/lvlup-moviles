@@ -17,5 +17,5 @@ data class UserEntity(
     val rut: String,
     val region: String,
     val comuna: String,
-    val rol: String  // "administrador" o "cliente"
+    val rol: String
 )
