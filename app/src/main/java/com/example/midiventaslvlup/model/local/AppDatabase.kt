@@ -6,10 +6,13 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 @Database(
     entities = [
@@ -40,7 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "app_database"
                 )
-                    .addCallback(DatabaseCallback(applicationScope))
+                    .addCallback(DatabaseCallback(context, applicationScope))
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
@@ -50,6 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     private class DatabaseCallback(
+        private val context: Context,
         private val scope: CoroutineScope
     ) : Callback() {
 
@@ -75,8 +79,15 @@ abstract class AppDatabase : RoomDatabase() {
 
             // Insertar productos de ejemplo
             Log.d("AppDatabase", "Insertando productos...")
-            expenseDao.insertAll(*SampleData.products.toTypedArray())
-            Log.d("AppDatabase", "Productos insertados: ${SampleData.products.size}")
+            try {
+                val jsonString = context.assets.open("products.json").bufferedReader().use { it.readText() }
+                val listType = object : TypeToken<List<ExpenseEntity>>() {}.type
+                val products: List<ExpenseEntity> = Gson().fromJson(jsonString, listType)
+                expenseDao.insertAll(*products.toTypedArray())
+                Log.d("AppDatabase", "Productos insertados: ${products.size}")
+            } catch (e: IOException) {
+                Log.e("AppDatabase", "Error al leer products.json", e)
+            }
 
             // Verificar si los usuarios ya existen
             val adminExists = userDao.getUserByEmail("admin@duocuc.cl")
