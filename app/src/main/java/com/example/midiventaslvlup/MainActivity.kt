@@ -19,6 +19,7 @@ import com.example.midiventaslvlup.ui.screen.DetalleProductoScreen
 import com.example.midiventaslvlup.ui.screen.DetailsScreen
 import com.example.midiventaslvlup.ui.screen.MainScreen
 import com.example.midiventaslvlup.ui.screen.ProductManagementScreen
+import com.example.midiventaslvlup.ui.screen.ProductosScreen  // ← AGREGAR IMPORT
 import com.example.midiventaslvlup.ui.screen.SplashScreen
 import com.example.midiventaslvlup.ui.screen.UserManagementScreen
 import com.example.midiventaslvlup.ui.theme.LevelUpGamerTheme
@@ -92,10 +93,28 @@ class MainActivity : ComponentActivity() {
                         composable("details") {
                             DetailsScreen(
                                 modifier = Modifier.fillMaxSize(),
-                                onProductClick = { productId ->
-                                    navController.navigate("productDetail/$productId")
+                                onCategoryClick = { categoria ->  // ← ACTUALIZAR: cambiar de onProductClick a onCategoryClick
+                                    navController.navigate("productos/$categoria")
                                 },
                                 onNavigateToCart = { navController.navigate("cart") }
+                            )
+                        }
+
+                        // ← AGREGAR: Nueva ruta para productos filtrados por categoría
+                        composable(
+                            route = "productos/{categoria}",
+                            arguments = listOf(
+                                navArgument("categoria") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val categoria = backStackEntry.arguments?.getString("categoria") ?: ""
+                            ProductosScreen(
+                                categoria = categoria,
+                                onBackClick = { navController.popBackStack() },
+                                onProductClick = { producto ->
+                                    // Navegar al detalle del producto usando el ID
+                                    navController.navigate("productDetail/${producto.id}")
+                                }
                             )
                         }
 

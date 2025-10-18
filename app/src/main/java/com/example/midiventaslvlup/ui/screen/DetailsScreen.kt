@@ -36,7 +36,7 @@ import com.example.midiventaslvlup.model.local.AppDatabase
 import com.example.midiventaslvlup.ui.theme.*
 import com.example.midiventaslvlup.viewmodel.DetailsViewModel
 import com.example.midiventaslvlup.viewmodel.DetailsViewModelFactory
-import com.example.midiventaslvlup.viewmodel.CartViewModel  // ← AGREGAR ESTE IMPORT
+import com.example.midiventaslvlup.viewmodel.CartViewModel
 
 data class Category(
     val name: String,
@@ -54,15 +54,15 @@ data class BlogPost(
 @Composable
 fun DetailsScreen(
     modifier: Modifier = Modifier,
-    onProductClick: (Int) -> Unit = {},
-    onNavigateToCart: () -> Unit = {}  // ← AGREGAR ESTE PARÁMETRO
+    onCategoryClick: (String) -> Unit = {},  // ← ACTUALIZADO: recibe nombre de categoría
+    onNavigateToCart: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
     val viewModel: DetailsViewModel = viewModel(factory = DetailsViewModelFactory(db.expenseDao()))
 
-    // ← AGREGAR: ViewModel del carrito para obtener el contador
+    // ViewModel del carrito para obtener el contador
     val cartViewModel: CartViewModel = viewModel()
     val cartItems by cartViewModel.cartItems.collectAsState(initial = emptyList())
     val itemCount = cartItems.sumOf { it.cantidad }
@@ -87,17 +87,17 @@ fun DetailsScreen(
             Brush.linearGradient(colors = listOf(Color(0xFFFF6B6B), Color(0xFFFF8E53)))
         ),
         Category(
-            "Consolas",
+            "Consola",  // ← IMPORTANTE: Debe coincidir con el JSON
             Icons.Default.Gamepad,
             Brush.linearGradient(colors = listOf(Color(0xFF4E54C8), Color(0xFF8F94FB)))
         ),
         Category(
-            "Computadores Gamer",
+            "Computador Gamer",  // ← IMPORTANTE: Debe coincidir con el JSON
             Icons.Default.Computer,
             Brush.linearGradient(colors = listOf(Color(0xFF00F5FF), Color(0xFF0099FF)))
         ),
         Category(
-            "Sillas",
+            "Silla Gamer",  // ← IMPORTANTE: Debe coincidir con el JSON
             Icons.Default.Chair,
             Brush.linearGradient(colors = listOf(Color(0xFFB06AB3), Color(0xFF4568DC)))
         ),
@@ -117,7 +117,7 @@ fun DetailsScreen(
             Brush.linearGradient(colors = listOf(Color(0xFF00E676), Color(0xFF00C853)))
         ),
         Category(
-            "Mousepads",
+            "Mousepad",  // ← IMPORTANTE: Debe coincidir con el JSON
             Icons.Default.CropSquare,
             Brush.linearGradient(colors = listOf(Color(0xFFFF5722), Color(0xFFFF9800)))
         )
@@ -198,7 +198,10 @@ fun DetailsScreen(
                                     Text("Categorías", color = TextWhite)
                                 }
                             },
-                            onClick = { /* Handle categorías */ }
+                            onClick = {
+                                showMenu = false
+                                // Scroll to categories o mostrar dialog con categorías
+                            }
                         )
 
                         DropdownMenuItem(
@@ -216,7 +219,7 @@ fun DetailsScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Carrito", color = TextWhite)
                                     Spacer(modifier = Modifier.weight(1f))
-                                    // ← ACTUALIZAR: Badge dinámico con el contador real
+                                    // Badge dinámico con el contador real
                                     if (itemCount > 0) {
                                         Badge(
                                             containerColor = Color.Red,
@@ -227,7 +230,7 @@ fun DetailsScreen(
                                     }
                                 }
                             },
-                            onClick = {  // ← ACTUALIZAR: Navegar al carrito
+                            onClick = {
                                 showMenu = false
                                 onNavigateToCart()
                             }
@@ -249,7 +252,10 @@ fun DetailsScreen(
                                     Text("Contacto", color = TextWhite)
                                 }
                             },
-                            onClick = { /* Handle contacto */ }
+                            onClick = {
+                                showMenu = false
+                                // Handle contacto
+                            }
                         )
                     }
                 },
@@ -317,7 +323,12 @@ fun DetailsScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(categories) { category ->
-                        CategoryCard(category = category)
+                        CategoryCard(
+                            category = category,
+                            onClick = {
+                                onCategoryClick(category.name)  // ← NAVEGACIÓN IMPLEMENTADA
+                            }
+                        )
                     }
                 }
             }
@@ -359,13 +370,16 @@ fun DetailsScreen(
 }
 
 @Composable
-fun CategoryCard(category: Category) {
+fun CategoryCard(
+    category: Category,
+    onClick: () -> Unit = {}  // ← PARÁMETRO onClick AGREGADO
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(160.dp)
             .shadow(8.dp, RoundedCornerShape(16.dp))
-            .clickable { /* Handle category click */ },
+            .clickable { onClick() },  // ← CLICK IMPLEMENTADO
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
