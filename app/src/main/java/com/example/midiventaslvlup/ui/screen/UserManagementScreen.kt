@@ -1,5 +1,6 @@
 package com.example.midiventaslvlup.ui.screen
 
+import android.util.Patterns
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -43,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -106,10 +109,13 @@ private fun CreateUserForm(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var rut by remember { mutableStateOf("") }
     var isAdmin by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.padding(16.dp),
+        modifier = Modifier
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -117,18 +123,28 @@ private fun CreateUserForm(
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Nombre") }
+            label = { Text("Nombre") },
+            modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email") }
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Contraseña") },
-            visualTransformation = PasswordVisualTransformation()
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = rut,
+            onValueChange = { rut = it },
+            label = { Text("RUT") },
+            modifier = Modifier.fillMaxWidth()
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = isAdmin, onCheckedChange = { isAdmin = it })
@@ -141,26 +157,34 @@ private fun CreateUserForm(
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = { 
-                scope.launch {
-                    val user = UserEntity(
-                        nombre = name.split(" ").first(),
-                        apellido = name.split(" ").getOrElse(1) { "" },
-                        correo = email,
-                        contrasena = password,
-                        rol = if (isAdmin) "administrador" else "cliente",
-                        telefono = "",
-                        fechaNacimiento = 0L,
-                        direccion = "",
-                        rut = "",
-                        region = "",
-                        comuna = ""
-                    )
-                    val newUserId = viewModel.createUser(user)
-                    if (newUserId > 0) {
-                        Toast.makeText(context, "Usuario creado con ID: $newUserId", Toast.LENGTH_SHORT).show()
-                        onUserCreated()
-                    } else {
-                        Toast.makeText(context, "Error al crear el usuario", Toast.LENGTH_SHORT).show()
+                if (name.isBlank() || email.isBlank() || password.isBlank() || rut.isBlank()) {
+                    Toast.makeText(context, "Por favor, complete todos los campos", Toast.LENGTH_SHORT).show()
+                } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                    Toast.makeText(context, "Por favor, ingrese un formato de correo válido", Toast.LENGTH_SHORT).show()
+                } else if (!isValidChileanRut(rut)) {
+                    Toast.makeText(context, "Por favor, ingrese un RUT chileno válido", Toast.LENGTH_SHORT).show()
+                } else {
+                    scope.launch {
+                        val user = UserEntity(
+                            nombre = name.split(" ").first(),
+                            apellido = name.split(" ").getOrElse(1) { "" },
+                            correo = email,
+                            contrasena = password,
+                            rol = if (isAdmin) "administrador" else "cliente",
+                            telefono = "",
+                            fechaNacimiento = 0L,
+                            direccion = "",
+                            rut = rut,
+                            region = "",
+                            comuna = ""
+                        )
+                        val newUserId = viewModel.createUser(user)
+                        if (newUserId > 0) {
+                            Toast.makeText(context, "Usuario creado con ID: $newUserId", Toast.LENGTH_SHORT).show()
+                            onUserCreated()
+                        } else {
+                            Toast.makeText(context, "Error al crear el usuario", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }) {
@@ -183,21 +207,32 @@ private fun EditUserForm(onUserUpdated: () -> Unit, onCancel: () -> Unit) {
 
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") } // For new password
     var isAdmin by remember { mutableStateOf(false) }
+    var telefono by remember { mutableStateOf("") }
+    var direccion by remember { mutableStateOf("") }
+    var rut by remember { mutableStateOf("") }
+    var region by remember { mutableStateOf("") }
+    var comuna by remember { mutableStateOf("") }
+
     var searchAttempted by remember { mutableStateOf(false) }
 
     val isFormEnabled = foundUser != null
 
     LaunchedEffect(foundUser) {
         if (searchAttempted) {
-            if (foundUser != null) {
-                name = "${foundUser!!.nombre} ${foundUser!!.apellido}".trim()
-                email = foundUser!!.correo
-                isAdmin = foundUser!!.rol == "administrador"
+            foundUser?.let {
+                name = "${it.nombre} ${it.apellido}".trim()
+                email = it.correo
+                isAdmin = it.rol == "administrador"
+                telefono = it.telefono
+                direccion = it.direccion
+                rut = it.rut
+                region = it.region
+                comuna = it.comuna
+                password = "" // Clear password field
                 Toast.makeText(context, "Usuario encontrado", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "Usuario no encontrado", Toast.LENGTH_SHORT).show()
-            }
+            } ?: Toast.makeText(context, "Usuario no encontrado", Toast.LENGTH_SHORT).show()
             searchAttempted = false
         }
     }
@@ -224,7 +259,8 @@ private fun EditUserForm(onUserUpdated: () -> Unit, onCancel: () -> Unit) {
                 label = { Text("Email del usuario") },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                enabled = !isFormEnabled
+                enabled = !isFormEnabled,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Button(
@@ -256,6 +292,51 @@ private fun EditUserForm(onUserUpdated: () -> Unit, onCancel: () -> Unit) {
             onValueChange = { email = it },
             label = { Text("Email") },
             enabled = isFormEnabled,
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+        )
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Nueva Contraseña (opcional)") },
+            visualTransformation = PasswordVisualTransformation(),
+            enabled = isFormEnabled,
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = telefono,
+            onValueChange = { telefono = it },
+            label = { Text("Teléfono") },
+            enabled = isFormEnabled,
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+        )
+        OutlinedTextField(
+            value = rut,
+            onValueChange = { rut = it },
+            label = { Text("RUT") },
+            enabled = isFormEnabled,
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = direccion,
+            onValueChange = { direccion = it },
+            label = { Text("Dirección") },
+            enabled = isFormEnabled,
+            modifier = Modifier.fillMaxWidth()
+        )
+         OutlinedTextField(
+            value = region,
+            onValueChange = { region = it },
+            label = { Text("Región") },
+            enabled = isFormEnabled,
+            modifier = Modifier.fillMaxWidth()
+        )
+         OutlinedTextField(
+            value = comuna,
+            onValueChange = { comuna = it },
+            label = { Text("Comuna") },
+            enabled = isFormEnabled,
             modifier = Modifier.fillMaxWidth()
         )
         Row(
@@ -283,17 +364,31 @@ private fun EditUserForm(onUserUpdated: () -> Unit, onCancel: () -> Unit) {
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
-                    foundUser?.let { userToUpdate ->
-                        scope.launch {
-                            val updatedUser = userToUpdate.copy(
-                                nombre = name.split(" ").firstOrNull() ?: "",
-                                apellido = name.split(" ").getOrNull(1) ?: "",
-                                correo = email,
-                                rol = if (isAdmin) "administrador" else "cliente"
-                            )
-                            viewModel.updateUser(updatedUser)
-                            Toast.makeText(context, "Usuario actualizado", Toast.LENGTH_SHORT).show()
-                            onUserUpdated()
+                    if (name.isBlank() || email.isBlank()) {
+                        Toast.makeText(context, "Por favor, complete todos los campos obligatorios", Toast.LENGTH_SHORT).show()
+                    } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                        Toast.makeText(context, "Por favor, ingrese un formato de correo válido", Toast.LENGTH_SHORT).show()
+                    } else if (rut.isNotBlank() && !isValidChileanRut(rut)) {
+                        Toast.makeText(context, "Por favor, ingrese un RUT chileno válido", Toast.LENGTH_SHORT).show()
+                    } else {
+                        foundUser?.let { userToUpdate ->
+                            scope.launch {
+                                val updatedUser = userToUpdate.copy(
+                                    nombre = name.split(" ").firstOrNull() ?: "",
+                                    apellido = name.split(" ").getOrNull(1) ?: "",
+                                    correo = email,
+                                    contrasena = if (password.isNotBlank()) password else userToUpdate.contrasena,
+                                    rol = if (isAdmin) "administrador" else "cliente",
+                                    telefono = telefono,
+                                    direccion = direccion,
+                                    rut = rut,
+                                    region = region,
+                                    comuna = comuna
+                                )
+                                viewModel.updateUser(updatedUser)
+                                Toast.makeText(context, "Usuario actualizado", Toast.LENGTH_SHORT).show()
+                                onUserUpdated()
+                            }
                         }
                     }
                 },
@@ -373,7 +468,9 @@ private fun DeleteUserForm(onUserDeleted: () -> Unit, onCancel: () -> Unit) {
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email del usuario a borrar.") }
+            label = { Text("Email del usuario a borrar.") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            modifier = Modifier.fillMaxWidth()
         )
         Row {
              Button(onClick = onCancel,
@@ -385,6 +482,8 @@ private fun DeleteUserForm(onUserDeleted: () -> Unit, onCancel: () -> Unit) {
                 val emailToDelete = email.trim()
                 if (emailToDelete.isBlank()) {
                     Toast.makeText(context, "Por favor ingrese un email", Toast.LENGTH_SHORT).show()
+                } else if (!Patterns.EMAIL_ADDRESS.matcher(emailToDelete).matches()) {
+                    Toast.makeText(context, "Por favor, ingrese un formato de correo válido", Toast.LENGTH_SHORT).show()
                 } else if (emailToDelete.equals(currentUserEmail, ignoreCase = true)) {
                     Toast.makeText(context, "No puedes borrar tu propia cuenta", Toast.LENGTH_SHORT).show()
                 } else {
@@ -403,5 +502,38 @@ private fun DeleteUserForm(onUserDeleted: () -> Unit, onCancel: () -> Unit) {
                 Text("Borrar")
             }
         }
+    }
+}
+
+private fun isValidChileanRut(rut: String): Boolean {
+    if (rut.isBlank()) return false
+    val cleanRut = rut.replace(".", "").replace("-", "").lowercase()
+    if (cleanRut.length < 2) return false
+
+    val dv = cleanRut.last()
+    val body = cleanRut.substring(0, cleanRut.length - 1)
+
+    if (!body.all { it.isDigit() }) return false
+    if (!dv.isDigit() && dv != 'k') return false
+
+    try {
+        var sum = 0
+        var multiplier = 2
+        for (i in body.reversed()) {
+            sum += i.toString().toInt() * multiplier
+            multiplier = if (multiplier == 7) 2 else multiplier + 1
+        }
+        val remainder = sum % 11
+        val calculatedDv = 11 - remainder
+
+        val expectedDv = when (calculatedDv) {
+            11 -> '0'
+            10 -> 'k'
+            else -> calculatedDv.toString().first()
+        }
+
+        return dv == expectedDv
+    } catch (e: Exception) {
+        return false
     }
 }

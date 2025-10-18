@@ -207,12 +207,16 @@ private fun CreateProductForm(viewModel: ProductViewModel, onProductCreated: () 
                 Text("Cancelar")
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = { 
+            Button(onClick = {
                 val precioInt = precio.toIntOrNull()
                 val stockInt = stock.toIntOrNull()
 
-                if (nombre.isBlank() || categoria.isBlank() || imagen.isBlank() || descripcion.isBlank() || precioInt == null || stockInt == null) {
+                if (nombre.isBlank() || categoria.isBlank() || imagen.isBlank() || descripcion.isBlank() || precio.isBlank() || stock.isBlank()) {
                     Toast.makeText(context, "Por favor, complete todos los campos", Toast.LENGTH_SHORT).show()
+                } else if (precioInt == null) {
+                    Toast.makeText(context, "El precio debe ser un valor numérico válido.", Toast.LENGTH_SHORT).show()
+                } else if (stockInt == null) {
+                    Toast.makeText(context, "El stock debe ser un valor numérico válido.", Toast.LENGTH_SHORT).show()
                 } else {
                     scope.launch {
                         val product = ExpenseEntity(
@@ -310,12 +314,16 @@ private fun EditProductForm(
                 Text("Cancelar")
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = { 
+            Button(onClick = {
                 val precioInt = precio.toIntOrNull()
                 val stockInt = stock.toIntOrNull()
 
-                if (nombre.isBlank() || categoria.isBlank() || imagen.isBlank() || descripcion.isBlank() || precioInt == null || stockInt == null) {
+                if (nombre.isBlank() || categoria.isBlank() || imagen.isBlank() || descripcion.isBlank() || precio.isBlank() || stock.isBlank()) {
                     Toast.makeText(context, "Por favor, complete todos los campos", Toast.LENGTH_SHORT).show()
+                } else if (precioInt == null) {
+                    Toast.makeText(context, "El precio debe ser un valor numérico válido.", Toast.LENGTH_SHORT).show()
+                } else if (stockInt == null) {
+                    Toast.makeText(context, "El stock debe ser un valor numérico válido.", Toast.LENGTH_SHORT).show()
                 } else {
                     scope.launch {
                         val updatedProduct = productToEdit!!.copy(
