@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminScreen() {
+fun AdminScreen(onNavigateToUserManagement: (String) -> Unit) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var selectedOption by remember { mutableStateOf("Home") }
@@ -140,19 +140,19 @@ fun AdminScreen() {
                     }
                     "UserAdmin" -> {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Button(onClick = { /* TODO */ }) {
+                            Button(onClick = { onNavigateToUserManagement("create") }) {
                                 Text("Crear usuario")
                             }
                             Spacer(modifier = Modifier.size(16.dp))
-                            Button(onClick = { /* TODO */ }) {
+                            Button(onClick = { onNavigateToUserManagement("edit") }) {
                                 Text("Editar usuario")
                             }
                             Spacer(modifier = Modifier.size(16.dp))
-                            Button(onClick = { /* TODO */ }) {
+                            Button(onClick = { onNavigateToUserManagement("list") }) {
                                 Text("Listar usuario")
                             }
                             Spacer(modifier = Modifier.size(16.dp))
-                            Button(onClick = { /* TODO */ }) {
+                            Button(onClick = { onNavigateToUserManagement("delete") }) {
                                 Text("Borrar usuario")
                             }
                         }
@@ -197,5 +197,5 @@ fun AdminScreen() {
 @Preview(showBackground = true)
 @Composable
 fun AdminScreenPreview() {
-    AdminScreen()
+    AdminScreen(onNavigateToUserManagement = {})
 }
