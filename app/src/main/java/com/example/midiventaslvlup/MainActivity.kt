@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.midiventaslvlup.ui.screen.AdminScreen
+import com.example.midiventaslvlup.ui.screen.CartScreen  // ← AGREGUE ESTE IMPORT
 import com.example.midiventaslvlup.ui.screen.DetalleProductoScreen
 import com.example.midiventaslvlup.ui.screen.DetailsScreen
 import com.example.midiventaslvlup.ui.screen.MainScreen
@@ -30,10 +31,9 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     NavHost(
                         navController = navController,
-                        startDestination = "splash", // CAMBIO: Ahora empieza en splash
+                        startDestination = "splash",
                         modifier = Modifier.padding(innerPadding)
                     ) {
-                        // NUEVO: Pantalla de Splash
                         composable("splash") {
                             SplashScreen(
                                 onSplashFinished = {
@@ -52,6 +52,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToAdmin = {
                                     navController.navigate("admin")
+                                },
+                                onNavigateToCart = {  // ← AGREGAR ESTE PARÁMETRO
+                                    navController.navigate("cart")
                                 }
                             )
                         }
@@ -65,6 +68,9 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.fillMaxSize(),
                                 onProductClick = { productId ->
                                     navController.navigate("productDetail/$productId")
+                                },
+                                onNavigateToCart = {  // ← AGREGAR ESTE PARÁMETRO
+                                    navController.navigate("cart")
                                 }
                             )
                         }
@@ -76,7 +82,19 @@ class MainActivity : ComponentActivity() {
                             val productId = backStackEntry.arguments?.getInt("productId") ?: 0
                             DetalleProductoScreen(
                                 productId = productId,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize(),
+                                onNavigateToCart = {  // ← AGREGAR ESTE PARÁMETRO
+                                    navController.navigate("cart")
+                                }
+                            )
+                        }
+
+                        // ← AGREGAR ESTA NUEVA RUTA DEL CARRITO
+                        composable("cart") {
+                            CartScreen(
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                }
                             )
                         }
                     }

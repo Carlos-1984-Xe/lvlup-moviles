@@ -8,4 +8,10 @@ val DarkBackground = Color(0xFF0D0D0D)
 val CardBackground = Color(0xFF1E1E1E)
 val TextWhite = Color(0xFFFFFFFF)
 val GrayText = Color(0xFFB0B0B0)
+
 val Black = Color(0xFF000000)
+
+val GreenPrimary = Color(0xFF00FF88)
+
+val GreenSecondary = Color(0xFF1E6F5C)
+
