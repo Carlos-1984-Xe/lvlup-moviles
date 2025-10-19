@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,13 +17,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -54,8 +51,11 @@ data class BlogPost(
 @Composable
 fun DetailsScreen(
     modifier: Modifier = Modifier,
-    onCategoryClick: (String) -> Unit = {},  // ← ACTUALIZADO: recibe nombre de categoría
-    onNavigateToCart: () -> Unit = {}
+    onCategoryClick: (String) -> Unit = {},
+    onNavigateToCart: () -> Unit = {},
+    onNavigateToPcGamerBlog: () -> Unit = {},
+    onNavigateToJuegosMesaBlog: () -> Unit = {},
+    onNavigateToPuntosRetiro: () -> Unit = {}  // ← NUEVO PARÁMETRO
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -87,17 +87,17 @@ fun DetailsScreen(
             Brush.linearGradient(colors = listOf(Color(0xFFFF6B6B), Color(0xFFFF8E53)))
         ),
         Category(
-            "Consola",  // ← IMPORTANTE: Debe coincidir con el JSON
+            "Consola",
             Icons.Default.Gamepad,
             Brush.linearGradient(colors = listOf(Color(0xFF4E54C8), Color(0xFF8F94FB)))
         ),
         Category(
-            "Computador Gamer",  // ← IMPORTANTE: Debe coincidir con el JSON
+            "Computador Gamer",
             Icons.Default.Computer,
             Brush.linearGradient(colors = listOf(Color(0xFF00F5FF), Color(0xFF0099FF)))
         ),
         Category(
-            "Silla Gamer",  // ← IMPORTANTE: Debe coincidir con el JSON
+            "Silla Gamer",
             Icons.Default.Chair,
             Brush.linearGradient(colors = listOf(Color(0xFFB06AB3), Color(0xFF4568DC)))
         ),
@@ -117,7 +117,7 @@ fun DetailsScreen(
             Brush.linearGradient(colors = listOf(Color(0xFF00E676), Color(0xFF00C853)))
         ),
         Category(
-            "Mousepad",  // ← IMPORTANTE: Debe coincidir con el JSON
+            "Mousepad",
             Icons.Default.CropSquare,
             Brush.linearGradient(colors = listOf(Color(0xFFFF5722), Color(0xFFFF9800)))
         )
@@ -200,7 +200,6 @@ fun DetailsScreen(
                             },
                             onClick = {
                                 showMenu = false
-                                // Scroll to categories o mostrar dialog con categorías
                             }
                         )
 
@@ -219,7 +218,6 @@ fun DetailsScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Carrito", color = TextWhite)
                                     Spacer(modifier = Modifier.weight(1f))
-                                    // Badge dinámico con el contador real
                                     if (itemCount > 0) {
                                         Badge(
                                             containerColor = Color.Red,
@@ -254,7 +252,27 @@ fun DetailsScreen(
                             },
                             onClick = {
                                 showMenu = false
-                                // Handle contacto
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        Icons.Default.LocationOn,
+                                        contentDescription = null,
+                                        tint = Color(0xFF00E676),  // Verde brillante
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Puntos Retiro", color = TextWhite)
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToPuntosRetiro()
                             }
                         )
                     }
@@ -326,7 +344,7 @@ fun DetailsScreen(
                         CategoryCard(
                             category = category,
                             onClick = {
-                                onCategoryClick(category.name)  // ← NAVEGACIÓN IMPLEMENTADA
+                                onCategoryClick(category.name)
                             }
                         )
                     }
@@ -357,7 +375,15 @@ fun DetailsScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(blogPosts.size) { index ->
-                        BlogCard(blogPost = blogPosts[index])
+                        BlogCard(
+                            blogPost = blogPosts[index],
+                            onClick = {
+                                when (index) {
+                                    0 -> onNavigateToPcGamerBlog()
+                                    1 -> onNavigateToJuegosMesaBlog()
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -372,14 +398,14 @@ fun DetailsScreen(
 @Composable
 fun CategoryCard(
     category: Category,
-    onClick: () -> Unit = {}  // ← PARÁMETRO onClick AGREGADO
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(160.dp)
             .shadow(8.dp, RoundedCornerShape(16.dp))
-            .clickable { onClick() },  // ← CLICK IMPLEMENTADO
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
@@ -415,13 +441,16 @@ fun CategoryCard(
 }
 
 @Composable
-fun BlogCard(blogPost: BlogPost) {
+fun BlogCard(
+    blogPost: BlogPost,
+    onClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .width(320.dp)
             .height(180.dp)
             .shadow(12.dp, RoundedCornerShape(20.dp))
-            .clickable { /* Handle blog click */ },
+            .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {

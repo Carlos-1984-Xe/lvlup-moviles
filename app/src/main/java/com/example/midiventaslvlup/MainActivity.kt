@@ -14,15 +14,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.midiventaslvlup.ui.screen.AdminScreen
+import com.example.midiventaslvlup.ui.screen.BlogJuegosMesaScreen  // ← NUEVO IMPORT
+import com.example.midiventaslvlup.ui.screen.BlogPcGamerScreen  // ← NUEVO IMPORT
 import com.example.midiventaslvlup.ui.screen.CartScreen
 import com.example.midiventaslvlup.ui.screen.DetalleProductoScreen
 import com.example.midiventaslvlup.ui.screen.DetailsScreen
 import com.example.midiventaslvlup.ui.screen.MainScreen
 import com.example.midiventaslvlup.ui.screen.ProductManagementScreen
-import com.example.midiventaslvlup.ui.screen.ProductosScreen  // ← AGREGAR IMPORT
+import com.example.midiventaslvlup.ui.screen.ProductosScreen
 import com.example.midiventaslvlup.ui.screen.SplashScreen
 import com.example.midiventaslvlup.ui.screen.UserManagementScreen
 import com.example.midiventaslvlup.ui.theme.LevelUpGamerTheme
+import com.example.midiventaslvlup.ui.screen.PuntosRetiroScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,14 +96,22 @@ class MainActivity : ComponentActivity() {
                         composable("details") {
                             DetailsScreen(
                                 modifier = Modifier.fillMaxSize(),
-                                onCategoryClick = { categoria ->  // ← ACTUALIZAR: cambiar de onProductClick a onCategoryClick
+                                onCategoryClick = { categoria ->
                                     navController.navigate("productos/$categoria")
                                 },
-                                onNavigateToCart = { navController.navigate("cart") }
+                                onNavigateToCart = { navController.navigate("cart") },
+                                onNavigateToPcGamerBlog = {
+                                    navController.navigate("blogPcGamer")
+                                },
+                                onNavigateToJuegosMesaBlog = {
+                                    navController.navigate("blogJuegosMesa")
+                                },
+                                onNavigateToPuntosRetiro = {  // ← AGREGAR ESTO
+                                    navController.navigate("puntosRetiro")
+                                }
                             )
                         }
 
-                        // ← AGREGAR: Nueva ruta para productos filtrados por categoría
                         composable(
                             route = "productos/{categoria}",
                             arguments = listOf(
@@ -112,7 +123,6 @@ class MainActivity : ComponentActivity() {
                                 categoria = categoria,
                                 onBackClick = { navController.popBackStack() },
                                 onProductClick = { producto ->
-                                    // Navegar al detalle del producto usando el ID
                                     navController.navigate("productDetail/${producto.id}")
                                 }
                             )
@@ -133,6 +143,25 @@ class MainActivity : ComponentActivity() {
                         composable("cart") {
                             CartScreen(
                                 onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        // ← NUEVA RUTA: Blog PC Gamer
+                        composable("blogPcGamer") {
+                            BlogPcGamerScreen(
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
+
+                        // ← NUEVA RUTA: Blog Juegos de Mesa
+                        composable("blogJuegosMesa") {
+                            BlogJuegosMesaScreen(
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
+                        composable("puntosRetiro") {
+                            PuntosRetiroScreen(
+                                onBackClick = { navController.popBackStack() }
                             )
                         }
                     }
