@@ -98,7 +98,7 @@ fun LoginScreen(
     val loginState by loginViewModel.loginState.collectAsState()
     val context = LocalContext.current
 
-    // Manejar navegación según el resultado del login
+    // determina si es admin o cliente y te envbia a uno u a otro
     LaunchedEffect(loginState.loginSuccess) {
         if (loginState.loginSuccess) {
             when (loginState.userRole) {
@@ -218,7 +218,7 @@ fun LoginScreen(
             )
         }
 
-        // Botón de emergencia para crear usuarios de prueba
+        // Botón de creacion para emergenecias
         IconButton(
             onClick = {
                 loginViewModel.createTestUsers()
