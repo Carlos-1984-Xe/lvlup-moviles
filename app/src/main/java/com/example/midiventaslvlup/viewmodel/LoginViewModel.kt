@@ -4,8 +4,8 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.midiventaslvlup.model.local.AppDatabase
-import com.example.midiventaslvlup.model.local.UserEntity
+import com.example.midiventaslvlup.model.repository.AuthRepository
+import com.example.midiventaslvlup.network.dto.LoginResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,12 +17,12 @@ data class LoginState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val loginSuccess: Boolean = false,
-    val userRole: String? = null
+    val user: LoginResponse? = null
 )
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val userDao = AppDatabase.getDatabase(application).userDao()
+    private val authRepository = AuthRepository()
 
     private val _loginState = MutableStateFlow(LoginState())
     val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
@@ -58,41 +58,29 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 Log.d("LoginViewModel", "Intentando login con: ${currentState.usuario}")
 
-                // Verificar todos los usuarios en la base de datos
-                val allUsers = userDao.getAllUsersSync()
-                Log.d("LoginViewModel", "Total usuarios en DB: ${allUsers.size}")
-                allUsers.forEach { user ->
-                    Log.d("LoginViewModel", "Usuario encontrado: correo=${user.correo}, rol=${user.rol}, contrasena=${user.contrasena}")
-                }
+                val result = authRepository.login(
+                    correo = currentState.usuario.trim(),
+                    contrasena = currentState.contrasena
+                )
 
-                val user = userDao.getUserByEmail(currentState.usuario.trim())
-                Log.d("LoginViewModel", "Usuario encontrado: ${user?.correo}")
+                if (result.isSuccess) {
+                    val user = result.getOrNull()!!
+                    Log.d("LoginViewModel", "Login exitoso: ${user.nombre}, Rol: ${user.rol}")
 
-                if (user != null) {
-                    Log.d("LoginViewModel", "Comparando contraseñas: '${currentState.contrasena}' vs '${user.contrasena}'")
-
-                    if (user.contrasena == currentState.contrasena) {
-                        Log.d("LoginViewModel", "Login exitoso para: ${user.correo}")
-                        _loginState.value = currentState.copy(
-                            isLoading = false,
-                            loginSuccess = true,
-                            userRole = user.rol,
-                            errorMessage = null
-                        )
-                    } else {
-                        Log.d("LoginViewModel", "Contraseña incorrecta")
-                        _loginState.value = currentState.copy(
-                            isLoading = false,
-                            loginSuccess = false,
-                            errorMessage = "Usuario o contraseña incorrectos"
-                        )
-                    }
+                    _loginState.value = currentState.copy(
+                        isLoading = false,
+                        loginSuccess = true,
+                        user = user,
+                        errorMessage = null
+                    )
                 } else {
-                    Log.d("LoginViewModel", "Usuario no encontrado en la base de datos")
+                    val error = result.exceptionOrNull()
+                    Log.e("LoginViewModel", "Error en login: ${error?.message}")
+
                     _loginState.value = currentState.copy(
                         isLoading = false,
                         loginSuccess = false,
-                        errorMessage = "Usuario no encontrado. Total usuarios: ${allUsers.size}"
+                        errorMessage = error?.message ?: "Usuario o contraseña incorrectos"
                     )
                 }
             } catch (e: Exception) {
@@ -100,7 +88,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 _loginState.value = currentState.copy(
                     isLoading = false,
                     loginSuccess = false,
-                    errorMessage = "Error al iniciar sesión: ${e.message}"
+                    errorMessage = "Error de conexión: ${e.localizedMessage}"
                 )
             }
         }
@@ -108,68 +96,5 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetLoginState() {
         _loginState.value = LoginState()
-    }
-
-    fun createTestUsers() {
-        viewModelScope.launch {
-            try {
-                Log.d("LoginViewModel", "Creando usuarios de prueba...")
-
-                // Verificar si ya existen
-                val adminExists = userDao.getUserByEmail("admin@duocuc.cl")
-                val clienteExists = userDao.getUserByEmail("cliente@gmail.com")
-
-                if (adminExists == null) {
-                    val adminId = userDao.insert(
-                        UserEntity(
-                            nombre = "Admin",
-                            apellido = "User",
-                            correo = "admin@duocuc.cl",
-                            contrasena = "admin123",
-                            telefono = "987654321",
-                            fechaNacimiento = 0,
-                            direccion = "DuocUC",
-                            rut = "12.345.678-9",
-                            region = "Valparaiso",
-                            comuna = "Viña del mar",
-                            rol = "administrador"
-                        )
-                    )
-                    Log.d("LoginViewModel", "Usuario Admin creado con ID: $adminId")
-                } else {
-                    Log.d("LoginViewModel", "Usuario Admin ya existe")
-                }
-
-                if (clienteExists == null) {
-                    val clienteId = userDao.insert(
-                        UserEntity(
-                            nombre = "Cliente",
-                            apellido = "User",
-                            correo = "cliente@gmail.com",
-                            contrasena = "cliente123",
-                            telefono = "123456789",
-                            fechaNacimiento = 0,
-                            direccion = "Por ahi",
-                            rut = "12.345.678-9",
-                            region = "Valparaiso",
-                            comuna = "Viña del mar",
-                            rol = "cliente"
-                        )
-                    )
-                    Log.d("LoginViewModel", "Usuario Cliente creado con ID: $clienteId")
-                } else {
-                    Log.d("LoginViewModel", "Usuario Cliente ya existe")
-                }
-
-                _loginState.value = _loginState.value.copy(
-                    errorMessage = "✓ Usuarios creados. Intenta iniciar sesión ahora."
-                )
-            } catch (e: Exception) {
-                Log.e("LoginViewModel", "Error al crear usuarios", e)
-                _loginState.value = _loginState.value.copy(
-                    errorMessage = "Error al crear usuarios: ${e.message}"
-                )
-            }
-        }
     }
 }

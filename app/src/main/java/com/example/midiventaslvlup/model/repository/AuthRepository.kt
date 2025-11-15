@@ -1,9 +1,12 @@
 package com.example.midiventaslvlup.model.repository
 
 import com.example.midiventaslvlup.network.RetrofitClient
-import com.example.midiventaslvlup.network.dto.*
+import com.example.midiventaslvlup.network.dto.LoginRequest
+import com.example.midiventaslvlup.network.dto.LoginResponse
+import com.example.midiventaslvlup.network.dto.RegisterRequest
+import com.example.midiventaslvlup.network.dto.RegisterResponse
 
-class UserRepository {
+class AuthRepository {
     private val api = RetrofitClient.apiService
 
     suspend fun login(correo: String, contrasena: String): Result<LoginResponse> {
@@ -18,24 +21,6 @@ class UserRepository {
     suspend fun register(request: RegisterRequest): Result<RegisterResponse> {
         return try {
             val response = api.register(request)
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun getUser(id: Long): Result<UserResponse> {
-        return try {
-            val response = api.getUser(id)
-            Result.success(response)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun getUsers(): Result<List<UserResponse>> {
-        return try {
-            val response = api.getUsers()
             Result.success(response)
         } catch (e: Exception) {
             Result.failure(e)
