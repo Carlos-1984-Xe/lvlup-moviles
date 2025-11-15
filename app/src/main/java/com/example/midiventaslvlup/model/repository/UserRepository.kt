@@ -1,28 +1,24 @@
-package com.example.midiventaslvlup.model.repository
+package com.example.midiventaslvlup.repository
 
-import com.example.midiventaslvlup.model.local.UserDao
-import com.example.midiventaslvlup.model.local.UserEntity
-import kotlinx.coroutines.flow.Flow
+import com.example.midiventaslvlup.network.RetrofitClient
+import com.example.midiventaslvlup.network.dto.*
 
-class UserRepository(private val userDao: UserDao) {
+class UserRepository {
+    private val api = RetrofitClient.apiService
 
-    fun getAllUsers(): Flow<List<UserEntity>> {
-        return userDao.getAllUsers()
+    suspend fun login(correo: String, contrasena: String): LoginResponse {
+        return api.login(LoginRequest(correo, contrasena))
     }
 
-    suspend fun getUserByEmail(email: String): UserEntity? {
-        return userDao.getUserByEmail(email)
+    suspend fun createUser(user: UserCreateRequest): UserResponse {
+        return api.createUser(user)
     }
 
-    suspend fun insertUser(user: UserEntity): Long {
-        return userDao.insert(user)
+    suspend fun getUser(id: Long): UserResponse {
+        return api.getUser(id)
     }
 
-    suspend fun updateUser(user: UserEntity) {
-        userDao.update(user)
-    }
-
-    suspend fun deleteUser(user: UserEntity) {
-        userDao.delete(user)
+    suspend fun getUsers(): List<UserResponse> {
+        return api.getUsers()
     }
 }
