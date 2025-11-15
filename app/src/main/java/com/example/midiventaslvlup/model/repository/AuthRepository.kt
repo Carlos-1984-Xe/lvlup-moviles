@@ -12,16 +12,24 @@ class AuthRepository {
     suspend fun login(correo: String, contrasena: String): Result<LoginResponse> {
         return try {
             val response = api.login(LoginRequest(correo, contrasena))
-            Result.success(response)
+            if (response.success && response.data != null) {
+                Result.success(response.data)
+            } else {
+                Result.failure(Exception(response.message ?: "Error en el login"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    suspend fun register(request: RegisterRequest): Result<RegisterResponse> {
+    suspend fun register(request: RegisterRequest): Result<Map<String, Any>> {
         return try {
             val response = api.register(request)
-            Result.success(response)
+            if (response.success && response.data != null) {
+                Result.success(response.data)
+            } else {
+                Result.failure(Exception(response.message ?: "Error en el registro"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
