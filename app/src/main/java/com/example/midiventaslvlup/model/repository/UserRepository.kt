@@ -1,4 +1,4 @@
-package com.example.midiventaslvlup.repository
+package com.example.midiventaslvlup.model.repository
 
 import com.example.midiventaslvlup.network.RetrofitClient
 import com.example.midiventaslvlup.network.dto.*
@@ -10,8 +10,8 @@ class UserRepository {
         return api.login(LoginRequest(correo, contrasena))
     }
 
-    suspend fun createUser(user: UserCreateRequest): UserResponse {
-        return api.createUser(user)
+    suspend fun register(request: RegisterRequest): RegisterResponse {
+        return api.register(request)
     }
 
     suspend fun getUser(id: Long): UserResponse {

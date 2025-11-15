@@ -7,8 +7,8 @@ interface ApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
-    @POST("users")
-    suspend fun createUser(@Body user: UserCreateRequest): UserResponse
+    @POST("auth/register") //auth/register
+    suspend fun register(@Body request: RegisterRequest): RegisterResponse // Cambiado a register y RegisterResponse
 
     @GET("users/{id}")
     suspend fun getUser(@Path("id") id: Long): UserResponse
