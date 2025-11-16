@@ -27,11 +27,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.midiventaslvlup.model.local.AppDatabase
-import com.example.midiventaslvlup.model.local.ExpenseEntity
+import com.example.midiventaslvlup.model.repository.ProductRepository
+import com.example.midiventaslvlup.network.dto.ProductDto
 import com.example.midiventaslvlup.ui.theme.*
-import com.example.midiventaslvlup.viewmodel.DetailsViewModel
-import com.example.midiventaslvlup.viewmodel.DetailsViewModelFactory
+import com.example.midiventaslvlup.viewmodel.ProductViewModel
+import com.example.midiventaslvlup.viewmodel.ProductViewModelFactory
 import java.text.NumberFormat
 import java.util.*
 
@@ -40,20 +40,24 @@ import java.util.*
 fun ProductosScreen(
     categoria: String,
     onBackClick: () -> Unit,
-    onProductClick: (ExpenseEntity) -> Unit = {},
+    onProductClick: (ProductDto) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val viewModel: DetailsViewModel = viewModel(
-        factory = DetailsViewModelFactory(db.expenseDao())
+    // ✅ USAR ProductRepository con Retrofit
+    val productRepository = remember { ProductRepository() }
+    val viewModel: ProductViewModel = viewModel(
+        factory = ProductViewModelFactory(productRepository)
     )
 
-    // Obtener productos filtrados por categoría
-    val todosLosProductos by viewModel.products.collectAsState(initial = emptyList())
-    val productosFiltrados = remember(todosLosProductos, categoria) {
-        todosLosProductos.filter { it.categoria == categoria }
+    // ✅ Seleccionar la categoría
+    LaunchedEffect(categoria) {
+        viewModel.selectCategory(categoria)
     }
+
+    // Obtener productos filtrados
+    val productos by viewModel.products.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
 
     Scaffold(
         topBar = {
@@ -68,7 +72,7 @@ fun ProductosScreen(
                             )
                         )
                         Text(
-                            text = "${productosFiltrados.size} productos disponibles",
+                            text = "${productos.size} productos disponibles",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = TextWhite.copy(alpha = 0.7f)
                             )
@@ -92,56 +96,107 @@ fun ProductosScreen(
         },
         containerColor = DarkBackground
     ) { paddingValues ->
-        if (productosFiltrados.isEmpty()) {
-            // Mensaje cuando no hay productos
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(32.dp)
+        when {
+            isLoading -> {
+                // ✅ Mostrar loading
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingCart,
-                        contentDescription = null,
-                        tint = TextWhite.copy(alpha = 0.3f),
-                        modifier = Modifier.size(80.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "No hay productos en esta categoría",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = TextWhite.copy(alpha = 0.5f)
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "Pronto agregaremos más productos",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = TextWhite.copy(alpha = 0.3f)
-                        )
-                    )
+                    CircularProgressIndicator(color = NeonGreen)
                 }
             }
-        } else {
-            // Grid de productos
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(productosFiltrados) { producto ->
-                    ProductCard(
-                        producto = producto,
-                        onClick = { onProductClick(producto) }
-                    )
+            error != null -> {
+                // ✅ Mostrar error
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Text(
+                            "Error al cargar productos",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = Color.Red
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            error ?: "Error desconocido",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = TextWhite.copy(alpha = 0.5f)
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.selectCategory(categoria) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = NeonGreen
+                            )
+                        ) {
+                            Text("Reintentar")
+                        }
+                    }
+                }
+            }
+            productos.isEmpty() -> {
+                // Mensaje cuando no hay productos
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ShoppingCart,
+                            contentDescription = null,
+                            tint = TextWhite.copy(alpha = 0.3f),
+                            modifier = Modifier.size(80.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "No hay productos en esta categoría",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = TextWhite.copy(alpha = 0.5f)
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "Pronto agregaremos más productos",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = TextWhite.copy(alpha = 0.3f)
+                            )
+                        )
+                    }
+                }
+            }
+            else -> {
+                // ✅ Grid de productos
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(productos) { producto ->
+                        ProductCard(
+                            producto = producto,
+                            onClick = { onProductClick(producto) }
+                        )
+                    }
                 }
             }
         }
@@ -150,7 +205,7 @@ fun ProductosScreen(
 
 @Composable
 fun ProductCard(
-    producto: ExpenseEntity,
+    producto: ProductDto,  // ✅ CAMBIADO de ExpenseEntity a ProductDto
     onClick: () -> Unit
 ) {
     Card(

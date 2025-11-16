@@ -1,6 +1,6 @@
 package com.example.midiventaslvlup.ui.screen
 
-import androidx.compose.foundation.background
+import android.app.Application
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,20 +12,43 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.midiventaslvlup.model.repository.CartRepository
+import com.example.midiventaslvlup.model.repository.OrderRepository
 import com.example.midiventaslvlup.ui.theme.GreenPrimary
+import com.example.midiventaslvlup.util.SessionManager
 import com.example.midiventaslvlup.viewmodel.CartViewModel
+import com.example.midiventaslvlup.viewmodel.CartViewModelFactory
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(
-    viewModel: CartViewModel = viewModel(),
     onNavigateBack: () -> Unit
 ) {
-    val cartItems by viewModel.cartItems.collectAsState(initial = emptyList())
+    val context = LocalContext.current
+
+    // ✅ OBTENER USERID DE LA SESIÓN
+    val userId = SessionManager.getUserId(context)
+
+    // ✅ CREAR REPOSITORIOS Y VIEWMODEL (usando RetrofitClient por defecto)
+    val cartRepository = remember { CartRepository() }
+    val orderRepository = remember { OrderRepository() }
+
+    val viewModel: CartViewModel = viewModel(
+        factory = CartViewModelFactory(
+            application = context.applicationContext as Application,
+            cartRepository = cartRepository,
+            orderRepository = orderRepository,
+            userId = userId
+        )
+    )
+
+    val cartItems by viewModel.cartItems.collectAsState()
     val cartTotal by viewModel.cartTotal.collectAsState()
     val couponCode by viewModel.couponCode.collectAsState()
     val discount by viewModel.discount.collectAsState()
@@ -33,9 +56,9 @@ fun CartScreen(
 
     var showPaymentDialog by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
-    var showSuccessSnackbar by remember { mutableStateOf(false) }  // ← AGREGAR
+    var showSuccessSnackbar by remember { mutableStateOf(false) }
 
-    val snackbarHostState = remember { SnackbarHostState() }  // ← AGREGAR
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         topBar = {
@@ -51,7 +74,7 @@ fun CartScreen(
                 )
             )
         },
-        snackbarHost = {  // ← AGREGAR
+        snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
                 Snackbar(
                     snackbarData = data,
@@ -65,7 +88,6 @@ fun CartScreen(
     ) { padding ->
 
         if (cartItems.isEmpty()) {
-            // Carrito vacío
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -79,14 +101,12 @@ fun CartScreen(
                 )
             }
         } else {
-            // Carrito con productos
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(16.dp)
             ) {
-                // Lista de productos
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -94,16 +114,15 @@ fun CartScreen(
                     items(cartItems) { item ->
                         CartItemCard(
                             item = item,
-                            onIncreaseQuantity = { viewModel.increaseQuantity(item) },
-                            onDecreaseQuantity = { viewModel.decreaseQuantity(item) },
-                            onRemove = { viewModel.removeFromCart(item) }
+                            onIncreaseQuantity = { viewModel.increaseQuantity(item.productId) },
+                            onDecreaseQuantity = { viewModel.decreaseQuantity(item.productId) },
+                            onRemove = { viewModel.removeFromCart(item.productId) }
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Panel de resumen
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -114,7 +133,6 @@ fun CartScreen(
                     Column(
                         modifier = Modifier.padding(20.dp)
                     ) {
-                        // Total
                         Text(
                             text = "Total: $$cartTotal",
                             fontSize = 24.sp,
@@ -123,7 +141,6 @@ fun CartScreen(
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
 
-                        // Cupón de descuento
                         OutlinedTextField(
                             value = couponCode,
                             onValueChange = { viewModel.updateCouponCode(it) },
@@ -141,7 +158,6 @@ fun CartScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Botón aplicar cupón
                         Button(
                             onClick = { viewModel.applyCoupon() },
                             modifier = Modifier.fillMaxWidth(),
@@ -153,7 +169,6 @@ fun CartScreen(
                             Text("Aplicar cupón", fontSize = 16.sp)
                         }
 
-                        // Mostrar descuento si existe
                         if (discount > 0) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
@@ -172,7 +187,6 @@ fun CartScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Botón Pagar
                         Button(
                             onClick = { showPaymentDialog = true },
                             modifier = Modifier.fillMaxWidth(),
@@ -186,7 +200,6 @@ fun CartScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Botón Vaciar carrito
                         Button(
                             onClick = { showClearDialog = true },
                             modifier = Modifier.fillMaxWidth(),
@@ -203,20 +216,52 @@ fun CartScreen(
         }
     }
 
-    // Diálogo de confirmación de pago
     if (showPaymentDialog) {
+        var metodoPago by remember { mutableStateOf("Efectivo") }
+        var direccionEnvio by remember { mutableStateOf("") }
+
         AlertDialog(
             onDismissRequest = { showPaymentDialog = false },
             title = { Text("Confirmar pago") },
-            text = { Text("¿Deseas proceder con el pago de $$finalTotal?") },
+            text = {
+                Column {
+                    Text("Total a pagar: $$finalTotal")
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = direccionEnvio,
+                        onValueChange = { direccionEnvio = it },
+                        label = { Text("Dirección de envío") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = metodoPago,
+                        onValueChange = { metodoPago = it },
+                        label = { Text("Método de pago") },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Efectivo, Tarjeta, etc.") },
+                        singleLine = true
+                    )
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.processPayment {
-                            showPaymentDialog = false
-                            showSuccessSnackbar = true  // ← ACTUALIZAR
+                        if (direccionEnvio.isNotBlank()) {
+                            viewModel.processPayment(
+                                metodoPago = metodoPago,
+                                direccionEnvio = direccionEnvio
+                            ) {
+                                showPaymentDialog = false
+                                showSuccessSnackbar = true
+                            }
                         }
-                    }
+                    },
+                    enabled = direccionEnvio.isNotBlank()
                 ) {
                     Text("Confirmar", color = GreenPrimary)
                 }
@@ -229,7 +274,6 @@ fun CartScreen(
         )
     }
 
-    // Diálogo de confirmación para vaciar carrito
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
@@ -253,11 +297,10 @@ fun CartScreen(
         )
     }
 
-    // ← AGREGAR: Snackbar de éxito
     LaunchedEffect(showSuccessSnackbar) {
         if (showSuccessSnackbar) {
             snackbarHostState.showSnackbar(
-                message = "¡Pago realizado con éxito! Stock actualizado ✓",
+                message = "¡Pago realizado con éxito!",
                 duration = SnackbarDuration.Long
             )
             showSuccessSnackbar = false

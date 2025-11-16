@@ -1,29 +1,52 @@
 package com.example.midiventaslvlup.viewmodel
 
+// viewmodel/CartViewModel.kt (NUEVA VERSIÓN CON RETROFIT)
+
 import android.app.Application
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.midiventaslvlup.model.local.AppDatabase
-import com.example.midiventaslvlup.model.local.CartItemEntity
-import com.example.midiventaslvlup.model.local.ExpenseEntity
+import com.example.midiventaslvlup.network.dto.CartDto
+import com.example.midiventaslvlup.network.dto.CartItemDto
+import com.example.midiventaslvlup.model.repository.CartRepository
+import com.example.midiventaslvlup.model.repository.OrderRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 
-class CartViewModel(application: Application) : AndroidViewModel(application) {
+class CartViewModel(
+    application: Application,
+    private val cartRepository: CartRepository,
+    private val orderRepository: OrderRepository,
+    private val userId: Long // ID del usuario logueado
+) : AndroidViewModel(application) {
 
-    private val cartDao = AppDatabase.getDatabase(application).cartDao()
-    private val expenseDao = AppDatabase.getDatabase(application).expenseDao()
+    // Estado de carga
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // Estado del carrito
-    private val _cartItems = MutableStateFlow<List<CartItemEntity>>(emptyList())
-    val cartItems: StateFlow<List<CartItemEntity>> = _cartItems.asStateFlow()
+    // Estado de error
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    // Carrito completo
+    private val _cart = MutableStateFlow<CartDto?>(null)
+    val cart: StateFlow<CartDto?> = _cart.asStateFlow()
+
+    // Items del carrito
+    private val _cartItems = MutableStateFlow<List<CartItemDto>>(emptyList())
+    val cartItems: StateFlow<List<CartItemDto>> = _cartItems.asStateFlow()
 
     // Total del carrito
     private val _cartTotal = MutableStateFlow(0)
     val cartTotal: StateFlow<Int> = _cartTotal.asStateFlow()
+
+    // Contador de items
+    private val _itemCount = MutableStateFlow(0)
+    val itemCount: StateFlow<Int> = _itemCount.asStateFlow()
 
     // Estado del cupón
     private val _couponCode = MutableStateFlow("")
@@ -37,113 +60,221 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
     val finalTotal: StateFlow<Int> = _finalTotal.asStateFlow()
 
     init {
-        // Observar items del carrito
-        viewModelScope.launch {
-            cartDao.getAllCartItems().collect { items ->
-                _cartItems.value = items
-            }
-        }
-
-        // Observar total del carrito
-        viewModelScope.launch {
-            cartDao.getCartTotal().collect { total ->
-                _cartTotal.value = total ?: 0
-                calculateFinalTotal()
-            }
-        }
+        loadCart()
     }
 
-    // Agregar producto al carrito
-    fun addToCart(producto: ExpenseEntity) {
+    /**
+     * Cargar carrito desde el servidor
+     */
+    fun loadCart() {
         viewModelScope.launch {
-            if (producto.stock <= 0) {
-                Toast.makeText(getApplication(), "Producto sin stock", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
+            _isLoading.value = true
+            _error.value = null
 
-            val existingItem = cartDao.getCartItemByProductoId(producto.id)
-
-            if (existingItem != null) {
-                if (existingItem.cantidad < producto.stock) {
-                    val updatedItem = existingItem.copy(
-                        cantidad = existingItem.cantidad + 1,
-                        subtotal = producto.precio * (existingItem.cantidad + 1)
-                    )
-                    cartDao.updateCartItem(updatedItem)
-                } else {
-                    Toast.makeText(getApplication(), "No puedes agregar más, stock máximo alcanzado", Toast.LENGTH_SHORT).show()
+            cartRepository.getCart(userId)
+                .onSuccess { cartDto ->
+                    _cart.value = cartDto
+                    _cartItems.value = cartDto?.items ?: emptyList()
+                    _cartTotal.value = cartDto?.total ?: 0
+                    _itemCount.value = cartDto?.itemCount ?: 0
+                    calculateFinalTotal()
                 }
-            } else {
-                val newItem = CartItemEntity(
-                    productoId = producto.id,
-                    nombre = producto.nombre,
-                    categoria = producto.categoria,
-                    imagen = producto.imagen,
-                    descripcion = producto.descripcion,
-                    precio = producto.precio,
-                    cantidad = 1,
-                    subtotal = producto.precio
-                )
-                cartDao.insertCartItem(newItem)
-            }
+                .onFailure { exception ->
+                    _error.value = exception.message
+                    _cart.value = null
+                    _cartItems.value = emptyList()
+                    _cartTotal.value = 0
+                    _itemCount.value = 0
+                }
+
+            _isLoading.value = false
         }
     }
 
-    // Aumentar cantidad de un item
-    fun increaseQuantity(item: CartItemEntity) {
+    /**
+     * Agregar producto al carrito
+     */
+    fun addToCart(productId: Long, quantity: Int = 1) {
         viewModelScope.launch {
-            val product = expenseDao.findExpenseById(item.productoId)
-            if (product != null && item.cantidad < product.stock) {
-                val updatedItem = item.copy(
-                    cantidad = item.cantidad + 1,
-                    subtotal = item.precio * (item.cantidad + 1)
-                )
-                cartDao.updateCartItem(updatedItem)
-            } else {
-                Toast.makeText(getApplication(), "No puedes agregar más, stock máximo alcanzado", Toast.LENGTH_SHORT).show()
-            }
+            _isLoading.value = true
+            _error.value = null
+
+            cartRepository.addProductToCart(userId, productId, quantity)
+                .onSuccess { cartDto ->
+                    _cart.value = cartDto
+                    _cartItems.value = cartDto.items
+                    _cartTotal.value = cartDto.total
+                    _itemCount.value = cartDto.itemCount
+                    calculateFinalTotal()
+
+                    Toast.makeText(
+                        getApplication(),
+                        "Producto agregado al carrito",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message
+                    Toast.makeText(
+                        getApplication(),
+                        exception.message ?: "Error al agregar producto",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+            _isLoading.value = false
         }
     }
 
-    // Disminuir cantidad de un item
-    fun decreaseQuantity(item: CartItemEntity) {
+    /**
+     * Aumentar cantidad de un producto
+     */
+    fun increaseQuantity(productId: Long) {
         viewModelScope.launch {
-            if (item.cantidad > 1) {
-                val updatedItem = item.copy(
-                    cantidad = item.cantidad - 1,
-                    subtotal = item.precio * (item.cantidad - 1)
-                )
-                cartDao.updateCartItem(updatedItem)
-            } else {
-                // Si la cantidad es 1, eliminar el item
-                cartDao.deleteCartItem(item)
-            }
+            _error.value = null
+
+            cartRepository.increaseQuantity(userId, productId)
+                .onSuccess { cartDto ->
+                    _cart.value = cartDto
+                    _cartItems.value = cartDto.items
+                    _cartTotal.value = cartDto.total
+                    _itemCount.value = cartDto.itemCount
+                    calculateFinalTotal()
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message
+                    Toast.makeText(
+                        getApplication(),
+                        exception.message ?: "Error al aumentar cantidad",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
         }
     }
 
-    // Eliminar un item del carrito
-    fun removeFromCart(item: CartItemEntity) {
+    /**
+     * Disminuir cantidad de un producto
+     */
+    fun decreaseQuantity(productId: Long) {
         viewModelScope.launch {
-            cartDao.deleteCartItem(item)
+            _error.value = null
+
+            cartRepository.decreaseQuantity(userId, productId)
+                .onSuccess { cartDto ->
+                    _cart.value = cartDto
+                    _cartItems.value = cartDto.items
+                    _cartTotal.value = cartDto.total
+                    _itemCount.value = cartDto.itemCount
+                    calculateFinalTotal()
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message
+                    Toast.makeText(
+                        getApplication(),
+                        exception.message ?: "Error al disminuir cantidad",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
         }
     }
 
-    // Vaciar todo el carrito
+    /**
+     * Actualizar cantidad exacta
+     */
+    fun updateQuantity(productId: Long, quantity: Int) {
+        viewModelScope.launch {
+            _error.value = null
+
+            cartRepository.updateQuantity(userId, productId, quantity)
+                .onSuccess { cartDto ->
+                    _cart.value = cartDto
+                    _cartItems.value = cartDto.items
+                    _cartTotal.value = cartDto.total
+                    _itemCount.value = cartDto.itemCount
+                    calculateFinalTotal()
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message
+                    Toast.makeText(
+                        getApplication(),
+                        exception.message ?: "Error al actualizar cantidad",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+        }
+    }
+
+    /**
+     * Eliminar producto del carrito
+     */
+    fun removeFromCart(productId: Long) {
+        viewModelScope.launch {
+            _error.value = null
+
+            cartRepository.removeProductFromCart(userId, productId)
+                .onSuccess { cartDto ->
+                    _cart.value = cartDto
+                    _cartItems.value = cartDto.items
+                    _cartTotal.value = cartDto.total
+                    _itemCount.value = cartDto.itemCount
+                    calculateFinalTotal()
+
+                    Toast.makeText(
+                        getApplication(),
+                        "Producto eliminado del carrito",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message
+                    Toast.makeText(
+                        getApplication(),
+                        exception.message ?: "Error al eliminar producto",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+        }
+    }
+
+    /**
+     * Vaciar carrito
+     */
     fun clearCart() {
         viewModelScope.launch {
-            cartDao.clearCart()
-            _couponCode.value = ""
-            _discount.value = 0
-            calculateFinalTotal()
+            _error.value = null
+
+            cartRepository.clearCart(userId)
+                .onSuccess { cartDto ->
+                    _cart.value = cartDto
+                    _cartItems.value = emptyList()
+                    _cartTotal.value = 0
+                    _itemCount.value = 0
+                    _couponCode.value = ""
+                    _discount.value = 0
+                    calculateFinalTotal()
+
+                    Toast.makeText(
+                        getApplication(),
+                        "Carrito vaciado",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                .onFailure { exception ->
+                    _error.value = exception.message
+                }
         }
     }
 
-    // Actualizar código de cupón
+    /**
+     * Actualizar código de cupón
+     */
     fun updateCouponCode(code: String) {
         _couponCode.value = code
     }
 
-    // Aplicar cupón
+    /**
+     * Aplicar cupón
+     */
     fun applyCoupon() {
         val code = _couponCode.value.trim().uppercase()
 
@@ -156,53 +287,105 @@ class CartViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         calculateFinalTotal()
+
+        if (_discount.value > 0) {
+            Toast.makeText(
+                getApplication(),
+                "Cupón aplicado: -$${_discount.value}",
+                Toast.LENGTH_SHORT
+            ).show()
+        } else {
+            Toast.makeText(
+                getApplication(),
+                "Cupón inválido",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
-    // Calcular total final
+    /**
+     * Calcular total final
+     */
     private fun calculateFinalTotal() {
         _finalTotal.value = (_cartTotal.value - _discount.value).coerceAtLeast(0)
     }
 
-    // ✨ PROCESAR PAGO Y ACTUALIZAR STOCK
-    fun processPayment(onSuccess: () -> Unit) {
+    /**
+     * Procesar pago y crear orden
+     */
+    fun processPayment(
+        metodoPago: String,
+        direccionEnvio: String,
+        onSuccess: () -> Unit
+    ) {
         viewModelScope.launch {
-            try {
-                val items = _cartItems.value
+            _isLoading.value = true
+            _error.value = null
 
-                // 1. Verificar que hay suficiente stock para todos los productos
-                for (item in items) {
-                    val producto = expenseDao.findExpenseById(item.productoId)
-                    if (producto == null) {
-                        Toast.makeText(getApplication(), "El producto '${item.nombre}' ya no existe.", Toast.LENGTH_LONG).show()
-                        return@launch
-                    }
-                    if (producto.stock < item.cantidad) {
-                        Toast.makeText(getApplication(), "Stock insuficiente para '${item.nombre}'. Solo quedan ${producto.stock}.", Toast.LENGTH_LONG).show()
-                        return@launch
-                    }
-                }
+            val cupon = if (_discount.value > 0) _couponCode.value else null
 
-                // 2. Actualizar el stock de cada producto
-                for (item in items) {
-                    val producto = expenseDao.findExpenseById(item.productoId)
-                    if (producto != null) {
-                        val productoActualizado = producto.copy(
-                            stock = producto.stock - item.cantidad
-                        )
-                        expenseDao.update(productoActualizado)
-                    }
-                }
+            orderRepository.processPayment(
+                userId = userId,
+                metodoPago = metodoPago,
+                direccionEnvio = direccionEnvio,
+                codigoCupon = cupon
+            ).onSuccess { order ->
+                // Limpiar carrito local
+                _cart.value = null
+                _cartItems.value = emptyList()
+                _cartTotal.value = 0
+                _itemCount.value = 0
+                _couponCode.value = ""
+                _discount.value = 0
+                _finalTotal.value = 0
 
-                // 3. Limpiar el carrito
-                clearCart()
+                Toast.makeText(
+                    getApplication(),
+                    "¡Pago procesado exitosamente!",
+                    Toast.LENGTH_LONG
+                ).show()
 
-                // 4. Llamar callback de éxito
                 onSuccess()
-
-            } catch (e: Exception) {
-                // Manejar error si algo falla
-                e.printStackTrace()
+            }.onFailure { exception ->
+                _error.value = exception.message
+                Toast.makeText(
+                    getApplication(),
+                    exception.message ?: "Error al procesar pago",
+                    Toast.LENGTH_LONG
+                ).show()
             }
+
+            _isLoading.value = false
         }
+    }
+
+    /**
+     * Limpiar error
+     */
+    fun clearError() {
+        _error.value = null
+    }
+
+    // Al final del archivo CartViewModel.kt
+
+}
+
+class CartViewModelFactory(
+    private val application: Application,
+    private val cartRepository: CartRepository,
+    private val orderRepository: OrderRepository,
+    private val userId: Long
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(CartViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return CartViewModel(
+                application = application,
+                cartRepository = cartRepository,
+                orderRepository = orderRepository,
+                userId = userId
+            ) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

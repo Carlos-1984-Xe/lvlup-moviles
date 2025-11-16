@@ -91,7 +91,7 @@ fun SplashScreen(
         }
 
         // Activar efecto de glow
-        delay(300)
+//        delay(300)
         showGlowEffect = true
 
         // Fade in del texto

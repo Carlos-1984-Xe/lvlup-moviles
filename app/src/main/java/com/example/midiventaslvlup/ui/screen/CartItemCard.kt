@@ -18,12 +18,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.midiventaslvlup.model.local.CartItemEntity
+import com.example.midiventaslvlup.network.dto.CartItemDto  // ✅ CAMBIADO
 import com.example.midiventaslvlup.ui.theme.GreenPrimary
 
 @Composable
 fun CartItemCard(
-    item: CartItemEntity,
+    item: CartItemDto,  // ✅ CAMBIADO de CartItemEntity a CartItemDto
     onIncreaseQuantity: () -> Unit,
     onDecreaseQuantity: () -> Unit,
     onRemove: () -> Unit
@@ -44,8 +44,8 @@ fun CartItemCard(
         ) {
             // Imagen del producto
             AsyncImage(
-                model = item.imagen,
-                contentDescription = item.nombre,
+                model = item.productImage,  // ✅ CAMBIADO de item.imagen
+                contentDescription = item.productName,  // ✅ CAMBIADO de item.nombre
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(8.dp))
@@ -60,7 +60,7 @@ fun CartItemCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = item.nombre,
+                    text = item.productName,  // ✅ CAMBIADO de item.nombre
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -70,7 +70,7 @@ fun CartItemCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = item.categoria,
+                    text = item.productCategory,  // ✅ CAMBIADO de item.categoria
                     fontSize = 12.sp,
                     color = GreenPrimary
                 )
@@ -78,13 +78,13 @@ fun CartItemCard(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Precio: $${item.precio}",
+                    text = "Precio: $${item.unitPrice}",  // ✅ CAMBIADO de item.precio
                     fontSize = 14.sp,
                     color = Color.LightGray
                 )
 
                 Text(
-                    text = "Subtotal: $${item.subtotal}",
+                    text = "Subtotal: $${item.subtotal}",  // ✅ Igual
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = GreenPrimary
@@ -131,7 +131,7 @@ fun CartItemCard(
 
                     // Cantidad
                     Text(
-                        text = "${item.cantidad}",
+                        text = "${item.quantity}",  // ✅ CAMBIADO de item.cantidad
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -155,4 +155,3 @@ fun CartItemCard(
         }
     }
 }
-

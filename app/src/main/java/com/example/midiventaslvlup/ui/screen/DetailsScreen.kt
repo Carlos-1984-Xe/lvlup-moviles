@@ -1,5 +1,10 @@
 package com.example.midiventaslvlup.ui.screen
 
+import android.app.Application
+import com.example.midiventaslvlup.model.repository.CartRepository
+import com.example.midiventaslvlup.model.repository.OrderRepository
+import com.example.midiventaslvlup.util.SessionManager
+import com.example.midiventaslvlup.viewmodel.CartViewModelFactory
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -29,10 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.midiventaslvlup.R
-import com.example.midiventaslvlup.model.local.AppDatabase
 import com.example.midiventaslvlup.ui.theme.*
-import com.example.midiventaslvlup.viewmodel.DetailsViewModel
-import com.example.midiventaslvlup.viewmodel.DetailsViewModelFactory
 import com.example.midiventaslvlup.viewmodel.CartViewModel
 
 data class Category(
@@ -55,17 +57,29 @@ fun DetailsScreen(
     onNavigateToCart: () -> Unit = {},
     onNavigateToPcGamerBlog: () -> Unit = {},
     onNavigateToJuegosMesaBlog: () -> Unit = {},
-    onNavigateToPuntosRetiro: () -> Unit = {}  // ← NUEVO PARÁMETRO
+    onNavigateToPuntosRetiro: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val viewModel: DetailsViewModel = viewModel(factory = DetailsViewModelFactory(db.expenseDao()))
 
-    // ViewModel del carrito para obtener el contador
-    val cartViewModel: CartViewModel = viewModel()
-    val cartItems by cartViewModel.cartItems.collectAsState(initial = emptyList())
-    val itemCount = cartItems.sumOf { it.cantidad }
+    //  OBTENER USERID DE LA SESIÓN
+    val userId = SessionManager.getUserId(context)
+
+    //  CREAR REPOSITORIOS Y VIEWMODEL DEL CARRITO (usando RetrofitClient por defecto)
+    val cartRepository = remember { CartRepository() }  // Sin parámetros, usa RetrofitClient
+    val orderRepository = remember { OrderRepository() }  // Sin parámetros, usa RetrofitClient
+
+    val cartViewModel: CartViewModel = viewModel(
+        factory = CartViewModelFactory(
+            application = context.applicationContext as Application,
+            cartRepository = cartRepository,
+            orderRepository = orderRepository,
+            userId = userId
+        )
+    )
+
+    val cartItems by cartViewModel.cartItems.collectAsState()
+    val itemCount = cartItems.sumOf { it.quantity }
 
     // Animación de pulso para el carrito
     val infiniteTransition = rememberInfiniteTransition(label = "cart_pulse")
@@ -263,7 +277,7 @@ fun DetailsScreen(
                                     Icon(
                                         Icons.Default.LocationOn,
                                         contentDescription = null,
-                                        tint = Color(0xFF00E676),  // Verde brillante
+                                        tint = Color(0xFF00E676),
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -393,7 +407,7 @@ fun DetailsScreen(
             }
         }
     }
-}
+}  // ✅ ESTA es la llave que cierra DetailsScreen
 
 @Composable
 fun CategoryCard(

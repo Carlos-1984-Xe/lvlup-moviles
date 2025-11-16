@@ -2,7 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("kotlin-kapt")
+    // ELIMINAR - Ya no necesitamos kapt sin Room
+    // id("kotlin-kapt")
 }
 
 android {
@@ -43,7 +44,6 @@ android {
 
 dependencies {
 
-    val roomVersion = "2.6.1"
     val lifecycleVersion = "2.8.6"
     val activityCompose = "1.9.3"
     val navCompose = "2.8.3"
@@ -51,19 +51,23 @@ dependencies {
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
     // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
+    // Compose - CAMBIADO el BOM a una versión compatible
+    implementation(platform("androidx.compose:compose-bom:2024.09.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    // Navigation
     implementation("androidx.activity:activity-compose:$activityCompose")
     implementation("androidx.navigation:navigation-compose:$navCompose")
 
@@ -71,18 +75,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycleVersion")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:$lifecycleVersion")
 
-    // Room (SQLite)
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-    kapt("androidx.room:room-compiler:$roomVersion")
-
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-
-    //Coil
+    // Coil (Cargar imágenes desde URL)
     implementation("io.coil-kt:coil-compose:2.7.0")
 
-    // Gson
+    // Gson - CORREGIDO: Agregado grupo correcto
     implementation("com.google.code.gson:gson:2.10.1")
 
     // Google Maps para Compose
@@ -90,13 +86,13 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.1.0")
 
-    // OSMDroid para OpenStreetMap (GRATIS, sin API Key)
+    // OSMDroid para OpenStreetMap
     implementation("org.osmdroid:osmdroid-android:6.1.18")
 
-    // Google Play Services Location (API nativa de GPS de Android)
-    implementation("com.google.android.gms:play-services-location:21.1.0")
-
+    // AndroidX Core
     implementation(libs.androidx.core.ktx)
+
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

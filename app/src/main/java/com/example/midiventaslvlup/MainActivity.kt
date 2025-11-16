@@ -3,6 +3,7 @@ package com.example.midiventaslvlup
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -123,6 +124,7 @@ class MainActivity : ComponentActivity() {
                                 categoria = categoria,
                                 onBackClick = { navController.popBackStack() },
                                 onProductClick = { producto ->
+                                    // ✅ CAMBIADO: ProductDto tiene Long id en lugar de Int
                                     navController.navigate("productDetail/${producto.id}")
                                 }
                             )
@@ -130,9 +132,9 @@ class MainActivity : ComponentActivity() {
 
                         composable(
                             route = "productDetail/{productId}",
-                            arguments = listOf(navArgument("productId") { type = NavType.IntType })
+                            arguments = listOf(navArgument("productId") { type = NavType.LongType })  // ✅
                         ) { backStackEntry ->
-                            val productId = backStackEntry.arguments?.getInt("productId") ?: 0
+                            val productId = backStackEntry.arguments?.getLong("productId") ?: 0L  // ✅
                             DetalleProductoScreen(
                                 productId = productId,
                                 modifier = Modifier.fillMaxSize(),

@@ -26,6 +26,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -37,7 +38,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,9 +54,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.midiventaslvlup.model.local.AppDatabase
-import com.example.midiventaslvlup.model.local.ExpenseEntity
 import com.example.midiventaslvlup.model.repository.ProductRepository
+import com.example.midiventaslvlup.network.dto.ProductDto
 import com.example.midiventaslvlup.viewmodel.ProductViewModel
 import com.example.midiventaslvlup.viewmodel.ProductViewModelFactory
 import kotlinx.coroutines.launch
@@ -66,17 +65,17 @@ import kotlinx.coroutines.launch
 fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
 
     var currentAction by remember { mutableStateOf(action) }
-    var selectedProductId by remember { mutableStateOf<Int?>(null) }
+    var selectedProductId by remember { mutableStateOf<Long?>(null) }
 
-    val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val productRepository = ProductRepository(db.expenseDao())
+    val productRepository = remember { ProductRepository() }  // ✅ Sin parámetros, usa RetrofitClient
     val viewModel: ProductViewModel = viewModel(factory = ProductViewModelFactory(productRepository))
+
+    val isLoading by viewModel.isLoading.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     val titleText = when (currentAction) {
                         "list" -> "Listado de Productos"
                         "create" -> "Crear Producto"
@@ -94,55 +93,73 @@ fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
-        ) {
-            when (currentAction) {
-                "create" -> CreateProductForm(
-                    viewModel = viewModel,
-                    onProductCreated = onNavigateBack, 
-                    onCancel = onNavigateBack
-                )
-                "edit" -> EditProductForm(
-                    viewModel = viewModel,
-                    productId = selectedProductId,
-                    onProductUpdated = { currentAction = "list" }, 
-                    onCancel = { 
-                        selectedProductId = null
-                        currentAction = "list"
-                    }
-                )
-                "list" -> ListProducts(
-                    viewModel = viewModel,
-                    onEditClick = {
-                        selectedProductId = it
-                        currentAction = "edit"
-                    },
-                    onDeleteClick = {
-                        selectedProductId = it
-                        currentAction = "delete"
-                    }
-                )
-                "delete" -> DeleteProductForm(
-                    viewModel = viewModel,
-                    productId = selectedProductId,
-                    onProductDeleted = { currentAction = "list" }, 
-                    onCancel = { 
-                        selectedProductId = null
-                        currentAction = "list"
-                    }
-                )
+        if (isLoading) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Cargando...")
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
+            ) {
+                when (currentAction) {
+                    "create" -> CreateProductForm(
+                        viewModel = viewModel,
+                        onProductCreated = onNavigateBack,
+                        onCancel = onNavigateBack
+                    )
+                    "edit" -> EditProductForm(
+                        viewModel = viewModel,
+                        productId = selectedProductId,
+                        onProductUpdated = { currentAction = "list" },
+                        onCancel = {
+                            selectedProductId = null
+                            currentAction = "list"
+                        }
+                    )
+                    "list" -> ListProducts(
+                        viewModel = viewModel,
+                        onEditClick = {
+                            selectedProductId = it
+                            currentAction = "edit"
+                        },
+                        onDeleteClick = {
+                            selectedProductId = it
+                            currentAction = "delete"
+                        }
+                    )
+                    "delete" -> DeleteProductForm(
+                        viewModel = viewModel,
+                        productId = selectedProductId,
+                        onProductDeleted = { currentAction = "list" },
+                        onCancel = {
+                            selectedProductId = null
+                            currentAction = "list"
+                        }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun CreateProductForm(viewModel: ProductViewModel, onProductCreated: () -> Unit, onCancel: () -> Unit) {
+private fun CreateProductForm(
+    viewModel: ProductViewModel,
+    onProductCreated: () -> Unit,
+    onCancel: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -202,8 +219,10 @@ private fun CreateProductForm(viewModel: ProductViewModel, onProductCreated: () 
         )
 
         Row {
-            Button(onClick = onCancel,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+            Button(
+                onClick = onCancel,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
                 Text("Cancelar")
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -211,25 +230,33 @@ private fun CreateProductForm(viewModel: ProductViewModel, onProductCreated: () 
                 val precioInt = precio.toIntOrNull()
                 val stockInt = stock.toIntOrNull()
 
-                if (nombre.isBlank() || categoria.isBlank() || imagen.isBlank() || descripcion.isBlank() || precio.isBlank() || stock.isBlank()) {
-                    Toast.makeText(context, "Por favor, complete todos los campos", Toast.LENGTH_SHORT).show()
-                } else if (precioInt == null) {
-                    Toast.makeText(context, "El precio debe ser un valor numérico válido.", Toast.LENGTH_SHORT).show()
-                } else if (stockInt == null) {
-                    Toast.makeText(context, "El stock debe ser un valor numérico válido.", Toast.LENGTH_SHORT).show()
-                } else {
-                    scope.launch {
-                        val product = ExpenseEntity(
-                            nombre = nombre,
-                            categoria = categoria,
-                            imagen = imagen,
-                            descripcion = descripcion,
-                            precio = precioInt,
-                            stock = stockInt
-                        )
-                        viewModel.createProduct(product)
-                        Toast.makeText(context, "Producto creado exitosamente", Toast.LENGTH_SHORT).show()
-                        onProductCreated()
+                when {
+                    nombre.isBlank() || categoria.isBlank() || imagen.isBlank() ||
+                            descripcion.isBlank() || precio.isBlank() || stock.isBlank() -> {
+                        Toast.makeText(context, "Complete todos los campos", Toast.LENGTH_SHORT).show()
+                    }
+                    precioInt == null -> {
+                        Toast.makeText(context, "Precio debe ser numérico", Toast.LENGTH_SHORT).show()
+                    }
+                    stockInt == null -> {
+                        Toast.makeText(context, "Stock debe ser numérico", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        scope.launch {
+                            viewModel.createProduct(
+                                nombre = nombre,
+                                categoria = categoria,
+                                imagen = imagen,
+                                descripcion = descripcion,
+                                precio = precioInt,
+                                stock = stockInt
+                            ).onSuccess {
+                                Toast.makeText(context, "Producto creado exitosamente", Toast.LENGTH_SHORT).show()
+                                onProductCreated()
+                            }.onFailure { error ->
+                                Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
                 }
             }) {
@@ -241,9 +268,9 @@ private fun CreateProductForm(viewModel: ProductViewModel, onProductCreated: () 
 
 @Composable
 private fun EditProductForm(
-    viewModel: ProductViewModel, 
-    productId: Int?, 
-    onProductUpdated: () -> Unit, 
+    viewModel: ProductViewModel,
+    productId: Long?,
+    onProductUpdated: () -> Unit,
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
@@ -257,15 +284,15 @@ private fun EditProductForm(
     var precio by remember { mutableStateOf("") }
     var stock by remember { mutableStateOf("") }
 
-    LaunchedEffect(key1 = productId) {
+    LaunchedEffect(productId) {
         if (productId != null) {
             viewModel.findProductById(productId)
         } else {
-            onCancel() // Should not happen, but as a safeguard
+            onCancel()
         }
     }
 
-    LaunchedEffect(key1 = productToEdit) {
+    LaunchedEffect(productToEdit) {
         productToEdit?.let {
             nombre = it.nombre
             categoria = it.categoria
@@ -276,18 +303,14 @@ private fun EditProductForm(
         }
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.clearFoundProduct()
-        }
-    }
-
     if (productToEdit == null) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            CircularProgressIndicator()
+            Spacer(modifier = Modifier.height(16.dp))
             Text("Cargando producto...")
         }
         return
@@ -302,15 +325,50 @@ private fun EditProductForm(
     ) {
         Text("Editando: ${productToEdit?.nombre}", style = MaterialTheme.typography.headlineMedium)
 
-        OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = categoria, onValueChange = { categoria = it }, label = { Text("Categoría") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = imagen, onValueChange = { imagen = it }, label = { Text("URL de la imagen") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = precio, onValueChange = { precio = it }, label = { Text("Precio") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-        OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("Stock") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+        OutlinedTextField(
+            value = nombre,
+            onValueChange = { nombre = it },
+            label = { Text("Nombre") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = categoria,
+            onValueChange = { categoria = it },
+            label = { Text("Categoría") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = imagen,
+            onValueChange = { imagen = it },
+            label = { Text("URL de la imagen") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = descripcion,
+            onValueChange = { descripcion = it },
+            label = { Text("Descripción") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = precio,
+            onValueChange = { precio = it },
+            label = { Text("Precio") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+        OutlinedTextField(
+            value = stock,
+            onValueChange = { stock = it },
+            label = { Text("Stock") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
 
         Row {
-            Button(onClick = onCancel, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+            Button(
+                onClick = onCancel,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
                 Text("Cancelar")
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -318,25 +376,37 @@ private fun EditProductForm(
                 val precioInt = precio.toIntOrNull()
                 val stockInt = stock.toIntOrNull()
 
-                if (nombre.isBlank() || categoria.isBlank() || imagen.isBlank() || descripcion.isBlank() || precio.isBlank() || stock.isBlank()) {
-                    Toast.makeText(context, "Por favor, complete todos los campos", Toast.LENGTH_SHORT).show()
-                } else if (precioInt == null) {
-                    Toast.makeText(context, "El precio debe ser un valor numérico válido.", Toast.LENGTH_SHORT).show()
-                } else if (stockInt == null) {
-                    Toast.makeText(context, "El stock debe ser un valor numérico válido.", Toast.LENGTH_SHORT).show()
-                } else {
-                    scope.launch {
-                        val updatedProduct = productToEdit!!.copy(
-                            nombre = nombre,
-                            categoria = categoria,
-                            imagen = imagen,
-                            descripcion = descripcion,
-                            precio = precioInt,
-                            stock = stockInt
-                        )
-                        viewModel.updateProduct(updatedProduct)
-                        Toast.makeText(context, "Producto actualizado", Toast.LENGTH_SHORT).show()
-                        onProductUpdated()
+                when {
+                    nombre.isBlank() || categoria.isBlank() || imagen.isBlank() ||
+                            descripcion.isBlank() || precio.isBlank() || stock.isBlank() -> {
+                        Toast.makeText(context, "Complete todos los campos", Toast.LENGTH_SHORT).show()
+                    }
+                    precioInt == null -> {
+                        Toast.makeText(context, "Precio debe ser numérico", Toast.LENGTH_SHORT).show()
+                    }
+                    stockInt == null -> {
+                        Toast.makeText(context, "Stock debe ser numérico", Toast.LENGTH_SHORT).show()
+                    }
+                    productId == null -> {
+                        Toast.makeText(context, "Error: ID de producto no válido", Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        scope.launch {
+                            viewModel.updateProduct(
+                                productId = productId,
+                                nombre = nombre,
+                                categoria = categoria,
+                                imagen = imagen,
+                                descripcion = descripcion,
+                                precio = precioInt,
+                                stock = stockInt
+                            ).onSuccess {
+                                Toast.makeText(context, "Producto actualizado exitosamente", Toast.LENGTH_SHORT).show()
+                                onProductUpdated()
+                            }.onFailure { error ->
+                                Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
                 }
             }) {
@@ -348,24 +418,28 @@ private fun EditProductForm(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ListProducts(viewModel: ProductViewModel, onEditClick: (Int) -> Unit, onDeleteClick: (Int) -> Unit) {
+private fun ListProducts(
+    viewModel: ProductViewModel,
+    onEditClick: (Long) -> Unit,
+    onDeleteClick: (Long) -> Unit
+) {
     val products by viewModel.products.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
 
-    var productToShowOptions by remember { mutableStateOf<ExpenseEntity?>(null) }
+    var productToShowOptions by remember { mutableStateOf<ProductDto?>(null) }
 
-    val allCategories = listOf("Todos") + categories
+    val allCategories = categories
 
     if (productToShowOptions != null) {
         ProductOptionsDialog(
             product = productToShowOptions!!,
             onDismiss = { productToShowOptions = null },
-            onEdit = { 
+            onEdit = {
                 onEditClick(productToShowOptions!!.id)
-                productToShowOptions = null 
+                productToShowOptions = null
             },
-            onDelete = { 
+            onDelete = {
                 onDeleteClick(productToShowOptions!!.id)
                 productToShowOptions = null
             }
@@ -387,23 +461,35 @@ private fun ListProducts(viewModel: ProductViewModel, onEditClick: (Int) -> Unit
             }
         }
 
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(products) { product ->
-                ProductItem(
-                    product = product,
-                    onClick = { productToShowOptions = product }
-                )
+        if (products.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("No hay productos en esta categoría")
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(products) { product ->
+                    ProductItem(
+                        product = product,
+                        onClick = { productToShowOptions = product }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ProductItem(product: ExpenseEntity, onClick: () -> Unit) {
+private fun ProductItem(product: ProductDto, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -423,8 +509,16 @@ private fun ProductItem(product: ExpenseEntity, onClick: () -> Unit) {
                 contentScale = ContentScale.Crop
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(product.nombre, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(product.categoria, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    product.nombre,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    product.categoria,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Precio: $${product.precio}", style = MaterialTheme.typography.bodyLarge)
                 Text("Stock: ${product.stock}", style = MaterialTheme.typography.bodyMedium)
@@ -435,7 +529,7 @@ private fun ProductItem(product: ExpenseEntity, onClick: () -> Unit) {
 
 @Composable
 private fun ProductOptionsDialog(
-    product: ExpenseEntity,
+    product: ProductDto,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -458,10 +552,48 @@ private fun ProductOptionsDialog(
 }
 
 @Composable
-private fun DeleteProductForm(viewModel: ProductViewModel, productId: Int?, onProductDeleted: () -> Unit, onCancel: () -> Unit) {
+private fun DeleteProductForm(
+    viewModel: ProductViewModel,
+    productId: Long?,
+    onProductDeleted: () -> Unit,
+    onCancel: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
     var productIdString by remember { mutableStateOf(productId?.toString() ?: "") }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showConfirmDialog && productId != null) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Confirmar eliminación") },
+            text = { Text("¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            viewModel.deleteProduct(productId).onSuccess {
+                                Toast.makeText(context, "Producto eliminado exitosamente", Toast.LENGTH_SHORT).show()
+                                showConfirmDialog = false
+                                onProductDeleted()
+                            }.onFailure { error ->
+                                Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_LONG).show()
+                                showConfirmDialog = false
+                            }
+                        }
+                    }
+                ) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier.padding(16.dp),
@@ -469,36 +601,37 @@ private fun DeleteProductForm(viewModel: ProductViewModel, productId: Int?, onPr
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("Borrar Producto", style = MaterialTheme.typography.headlineMedium)
-        OutlinedTextField(
-            value = productIdString,
-            onValueChange = { productIdString = it },
-            label = { Text("ID del producto a borrar") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+
+        Text(
+            text = "ID del producto: $productIdString",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(16.dp)
         )
+
+        Text(
+            text = "¿Está seguro de que desea eliminar este producto?",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
         Row {
-             Button(onClick = onCancel,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+            Button(
+                onClick = onCancel,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) {
                 Text("Cancelar")
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = { 
-                val id = productIdString.toIntOrNull()
-                if (id == null) {
-                    Toast.makeText(context, "Por favor ingrese un ID válido", Toast.LENGTH_SHORT).show()
-                } else {
-                    scope.launch {
-                        val productToDelete = viewModel.findProductByIdOnce(id)
-                        if (productToDelete != null) {
-                            viewModel.deleteProduct(productToDelete)
-                            Toast.makeText(context, "Producto borrado exitosamente", Toast.LENGTH_SHORT).show()
-                            onProductDeleted()
-                        } else {
-                            Toast.makeText(context, "Producto no encontrado", Toast.LENGTH_SHORT).show()
-                        }
+            Button(
+                onClick = {
+                    if (productId != null) {
+                        showConfirmDialog = true
+                    } else {
+                        Toast.makeText(context, "Error: ID de producto no válido", Toast.LENGTH_SHORT).show()
                     }
-                }
-            }) {
-                Text("Borrar")
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Eliminar")
             }
         }
     }

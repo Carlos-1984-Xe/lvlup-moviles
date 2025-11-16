@@ -14,9 +14,12 @@ data class ApiResponse<T>(
     @SerializedName("success")
     val success: Boolean,
 
-    @SerializedName("message")
-    val message: String,
-
     @SerializedName("data")
-    val data: T? // Los datos pueden ser nulos si la petición falla
+    val data: T? = null,
+
+    @SerializedName("message")
+    val message: String? = null,
+
+    @SerializedName("count")
+    val count: Int? = null
 )

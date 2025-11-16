@@ -1,5 +1,11 @@
 package com.example.midiventaslvlup.ui.screen
 
+import android.app.Application
+import com.example.midiventaslvlup.model.repository.CartRepository
+import com.example.midiventaslvlup.model.repository.OrderRepository
+import com.example.midiventaslvlup.model.repository.ProductRepository
+import com.example.midiventaslvlup.util.SessionManager
+import com.example.midiventaslvlup.viewmodel.CartViewModelFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -24,17 +30,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.midiventaslvlup.R
-import com.example.midiventaslvlup.model.local.AppDatabase
 import com.example.midiventaslvlup.ui.theme.GreenPrimary
 import com.example.midiventaslvlup.viewmodel.CartViewModel
 import com.example.midiventaslvlup.viewmodel.DetalleProductoViewModel
 import com.example.midiventaslvlup.viewmodel.DetalleProductoViewModelFactory
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetalleProductoScreen(
-    productId: Int,
+    productId: Long,
     modifier: Modifier = Modifier,
     onNavigateToCart: () -> Unit = {}
 ) {
@@ -42,13 +46,33 @@ fun DetalleProductoScreen(
     var showAddedSnackbar by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val db = AppDatabase.getDatabase(context)
-    val viewModel: DetalleProductoViewModel = viewModel(factory = DetalleProductoViewModelFactory(db.expenseDao(), productId))
-    val product by viewModel.product.collectAsState(initial = null)
 
-    val cartViewModel: CartViewModel = viewModel()
-    val cartItems by cartViewModel.cartItems.collectAsState(initial = emptyList())
-    val itemCount = cartItems.sumOf { it.cantidad }
+    // ✅ OBTENER USERID DE LA SESIÓN
+    val userId = SessionManager.getUserId(context)
+
+    // ✅ CREAR REPOSITORIOS Y VIEWMODELS (usando RetrofitClient por defecto)
+    val productRepository = remember { ProductRepository() }  // ✅ Sin parámetros
+    val viewModel: DetalleProductoViewModel = viewModel(
+        factory = DetalleProductoViewModelFactory(productRepository, productId)
+    )
+    val product by viewModel.product.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    val cartRepository = remember { CartRepository() }  // ✅ Sin parámetros
+    val orderRepository = remember { OrderRepository() }  // ✅ Sin parámetros
+
+    val cartViewModel: CartViewModel = viewModel(
+        factory = CartViewModelFactory(
+            application = context.applicationContext as Application,
+            cartRepository = cartRepository,
+            orderRepository = orderRepository,
+            userId = userId
+        )
+    )
+
+    val cartItems by cartViewModel.cartItems.collectAsState()
+    val itemCount = cartItems.sumOf { it.quantity }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -140,82 +164,132 @@ fun DetalleProductoScreen(
         },
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
-                // ✨ SNACKBAR PERSONALIZADO CON COLORES LEGIBLES
                 Snackbar(
                     snackbarData = data,
-                    containerColor = GreenPrimary, // Fondo verde de tu marca
-                    contentColor = Color.White, // Texto blanco para contraste
-                    actionColor = Color(0xFFB2FF59), // Verde claro para acciones
+                    containerColor = GreenPrimary,
+                    contentColor = Color.White,
+                    actionColor = Color(0xFFB2FF59),
                     modifier = Modifier.padding(16.dp)
                 )
             }
         }
     ) { paddingValues ->
-        product?.let {
-            Column(
-                modifier = modifier
-                    .padding(paddingValues)
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                AsyncImage(
-                    model = it.imagen,
-                    contentDescription = it.nombre,
-                    modifier = Modifier
-                        .height(300.dp)
-                        .fillMaxWidth(),
-                    contentScale = ContentScale.Fit
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = it.nombre, style = MaterialTheme.typography.headlineLarge)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = it.descripcion, style = MaterialTheme.typography.bodyLarge)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "Precio: $${it.precio}", style = MaterialTheme.typography.headlineMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Stock disponible: ${it.stock} unidades",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (it.stock > 0) GreenPrimary else Color.Red
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = {
-                        cartViewModel.addToCart(it)
-                        showAddedSnackbar = true
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = GreenPrimary
-                    ),
-                    enabled = it.stock > 0
-                ) {
-                    Icon(
-                        Icons.Default.ShoppingCart,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        if (it.stock > 0) "Agregar al carrito" else "Sin stock",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            when {
+                isLoading -> {
+                    // ✅ Mostrar loading
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
+                error != null -> {
+                    // ✅ Mostrar error
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Error al cargar el producto",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.Red
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = error ?: "Error desconocido",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { viewModel.refreshProduct() }) {
+                            Text("Reintentar")
+                        }
+                    }
+                }
+                product != null -> {
+                    // ✅ Mostrar producto
+                    val productData = product!!
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        AsyncImage(
+                            model = productData.imagen,  // ✅ Ya es "imagen" en ProductDto
+                            contentDescription = productData.nombre,  // ✅ Ya es "nombre"
+                            modifier = Modifier
+                                .height(300.dp)
+                                .fillMaxWidth(),
+                            contentScale = ContentScale.Fit
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = productData.nombre,
+                            style = MaterialTheme.typography.headlineLarge
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = productData.descripcion,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Precio: $${productData.precio}",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Stock disponible: ${productData.stock} unidades",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (productData.stock > 0) GreenPrimary else Color.Red
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                // ✅ CAMBIADO: usar productId en lugar del objeto completo
+                                cartViewModel.addToCart(productData.id)
+                                showAddedSnackbar = true
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = GreenPrimary
+                            ),
+                            enabled = productData.stock > 0
+                        ) {
+                            Icon(
+                                Icons.Default.ShoppingCart,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (productData.stock > 0) "Agregar al carrito" else "Sin stock",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                OutlinedButton(
-                    onClick = onNavigateToCart,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Ver carrito ($itemCount)")
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedButton(
+                            onClick = onNavigateToCart,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Ver carrito ($itemCount)")
+                        }
+                    }
                 }
             }
         }
 
+        // ✅ Snackbar de confirmación
         LaunchedEffect(showAddedSnackbar) {
             if (showAddedSnackbar) {
                 snackbarHostState.showSnackbar(
