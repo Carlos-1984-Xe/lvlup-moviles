@@ -2,8 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    // ELIMINAR - Ya no necesitamos kapt sin Room
-    // id("kotlin-kapt")
+    // Agregar Jacoco para cobertura de código
+    jacoco
 }
 
 android {
@@ -29,16 +29,42 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            enableUnitTestCoverage = true
+            enableAndroidTestCoverage = true
+        }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
+    }
+
+    // Configuración para JUnit 5
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
+    // Configuración de packaging para evitar conflictos
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/LICENSE.md"
+            excludes += "META-INF/LICENSE-notice.md"
+        }
     }
 }
 
@@ -59,7 +85,7 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
-    // Compose - CAMBIADO el BOM a una versión compatible
+    // Compose
     implementation(platform("androidx.compose:compose-bom:2024.09.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
@@ -74,11 +100,12 @@ dependencies {
     // Lifecycle / MVVM
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycleVersion")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycleVersion")
 
     // Coil (Cargar imágenes desde URL)
     implementation("io.coil-kt:coil-compose:2.7.0")
 
-    // Gson - CORREGIDO: Agregado grupo correcto
+    // Gson
     implementation("com.google.code.gson:gson:2.10.1")
 
     // Google Maps para Compose
@@ -92,11 +119,122 @@ dependencies {
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
 
-    // Testing
+    // ============================================
+    // DEPENDENCIAS DE TESTING - NUEVAS
+    // ============================================
+
+    // JUnit 5 (Jupiter) para unit tests
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.1")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.1")
+
+    // Kotest para assertions más expresivas
+    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
+    testImplementation("io.kotest:kotest-property:5.8.0")
+
+    // MockK para mocking en Kotlin
+    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("io.mockk:mockk-android:1.13.8")
+    testImplementation("io.mockk:mockk-agent:1.13.8")
+
+    // Coroutines Test
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+
+    // Turbine para testear Flows y StateFlows
+    testImplementation("app.cash.turbine:turbine:1.0.0")
+
+    // Robolectric para tests con contexto Android en JVM
+    testImplementation("org.robolectric:robolectric:4.11.1")
+
+    // AndroidX Test - Core
+    testImplementation("androidx.test:core:1.5.0")
+    testImplementation("androidx.test:core-ktx:1.5.0")
+    testImplementation("androidx.test.ext:junit:1.1.5")
+    testImplementation("androidx.test.ext:junit-ktx:1.1.5")
+
+    // Arch Core Testing para LiveData (si lo usas)
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+
+    // OkHttp MockWebServer para testear llamadas HTTP
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+
+    // ============================================
+    // ANDROID INSTRUMENTED TESTS (UI)
+    // ============================================
+
+    // Compose UI Testing
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.compose.ui:ui-test-manifest")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // AndroidX Test Runner
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.test:rules:1.5.0")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.ext:junit-ktx:1.1.5")
+
+    // Espresso (opcional, para casos avanzados)
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
+    // MockK para Android Tests
+    androidTestImplementation("io.mockk:mockk-android:1.13.8")
+
+    // Navigation Testing
+    androidTestImplementation("androidx.navigation:navigation-testing:$navCompose")
+
+    // Coroutines Test para Android Tests
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+
+    // ============================================
+    // LEGACY TESTS (los que ya tenías)
+    // ============================================
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// ============================================
+// TAREA DE JACOCO PARA COBERTURA DE CÓDIGO
+// ============================================
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "android/**/*.*",
+        "**/data/remote/api/*", // Excluir interfaces de Retrofit
+        "**/di/*" // Excluir dependency injection si la agregas
+    )
+
+    val debugTree = fileTree("${project.buildDir}/tmp/kotlin-classes/debug") {
+        exclude(fileFilter)
+    }
+
+    val mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.setFrom(files(mainSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(project.buildDir) {
+        include("jacoco/testDebugUnitTest.exec")
+    })
+}
+
+// Task para limpiar antes de ejecutar tests
+tasks.register("cleanTest") {
+    dependsOn("clean")
+    doLast {
+        delete("${project.buildDir}/jacoco")
+        delete("${project.buildDir}/test-results")
+    }
 }

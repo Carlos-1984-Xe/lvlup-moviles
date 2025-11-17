@@ -4,15 +4,29 @@ import com.example.midiventaslvlup.network.ApiService
 import com.example.midiventaslvlup.network.RetrofitClient
 import com.example.midiventaslvlup.network.dto.ProductDto
 import com.example.midiventaslvlup.network.dto.ProductRequest
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class ProductRepository(private val apiService: ApiService = RetrofitClient.apiService) {
+/**
+ * Repositorio para manejar las operaciones de productos
+ *
+ * @param apiService Servicio de API para hacer las peticiones HTTP
+ * @param dispatcher Dispatcher para ejecutar las corrutinas (IO en producción, Test en pruebas)
+ *                   Valor por defecto: Dispatchers.IO (operaciones de red/base de datos)
+ */
+class ProductRepository(
+    private val apiService: ApiService = RetrofitClient.apiService,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO  // 🧪 Inyectable para tests
+) {
 
     /**
      * Obtener todos los productos
+     *
+     * withContext(dispatcher) cambia el contexto de ejecución a IO thread
+     * para no bloquear el UI thread con operaciones de red
      */
-    suspend fun getAllProducts(): Result<List<ProductDto>> = withContext(Dispatchers.IO) {
+    suspend fun getAllProducts(): Result<List<ProductDto>> = withContext(dispatcher) {
         try {
             val response = apiService.getAllProducts()
             if (response.success && response.data != null) {
@@ -27,8 +41,10 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
 
     /**
      * Obtener productos con stock disponible
+     *
+     * Útil para mostrar solo productos que pueden ser comprados
      */
-    suspend fun getProductsWithStock(): Result<List<ProductDto>> = withContext(Dispatchers.IO) {
+    suspend fun getProductsWithStock(): Result<List<ProductDto>> = withContext(dispatcher) {
         try {
             val response = apiService.getProductsWithStock()
             if (response.success && response.data != null) {
@@ -43,8 +59,11 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
 
     /**
      * Obtener producto por ID
+     *
+     * @param id ID único del producto a buscar
+     * @return Result con el ProductDto encontrado o un error
      */
-    suspend fun getProductById(id: Long): Result<ProductDto> = withContext(Dispatchers.IO) {
+    suspend fun getProductById(id: Long): Result<ProductDto> = withContext(dispatcher) {
         try {
             val response = apiService.getProductById(id)
             if (response.success && response.data != null) {
@@ -59,8 +78,13 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
 
     /**
      * Obtener productos por categoría
+     *
+     * @param categoria Nombre de la categoría ("Todos" retorna todos los productos)
+     *
+     * Lógica especial: Si categoria == "Todos", llama a getAllProducts()
+     * sino, filtra por la categoría específica
      */
-    suspend fun getProductsByCategory(categoria: String): Result<List<ProductDto>> = withContext(Dispatchers.IO) {
+    suspend fun getProductsByCategory(categoria: String): Result<List<ProductDto>> = withContext(dispatcher) {
         try {
             val response = if (categoria == "Todos") {
                 apiService.getAllProducts()
@@ -80,11 +104,15 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
 
     /**
      * Obtener todas las categorías
+     *
+     * Agrega automáticamente "Todos" al inicio de la lista
+     * para permitir ver todos los productos sin filtro
      */
-    suspend fun getAllCategories(): Result<List<String>> = withContext(Dispatchers.IO) {
+    suspend fun getAllCategories(): Result<List<String>> = withContext(dispatcher) {
         try {
             val response = apiService.getAllCategories()
             if (response.success && response.data != null) {
+                // Concatenar "Todos" al inicio de las categorías del servidor
                 val categoriesWithAll = listOf("Todos") + response.data
                 Result.success(categoriesWithAll)
             } else {
@@ -97,8 +125,11 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
 
     /**
      * Buscar productos por nombre
+     *
+     * @param name Texto a buscar en el nombre del producto
+     * @return Lista de productos que coinciden con el criterio de búsqueda
      */
-    suspend fun searchProducts(name: String): Result<List<ProductDto>> = withContext(Dispatchers.IO) {
+    suspend fun searchProducts(name: String): Result<List<ProductDto>> = withContext(dispatcher) {
         try {
             val response = apiService.searchProducts(name)
             if (response.success && response.data != null) {
@@ -110,9 +141,18 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
             Result.failure(e)
         }
     }
-    
+
     /**
      * Crear un nuevo producto (Admin)
+     *
+     * Requiere permisos de administrador en el backend
+     *
+     * @param nombre Nombre del producto
+     * @param categoria Categoría a la que pertenece
+     * @param imagen URL de la imagen del producto
+     * @param descripcion Descripción detallada
+     * @param precio Precio en la moneda configurada
+     * @param stock Cantidad disponible en inventario
      */
     suspend fun createProduct(
         nombre: String,
@@ -121,7 +161,7 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
         descripcion: String,
         precio: Int,
         stock: Int
-    ): Result<ProductDto> = withContext(Dispatchers.IO) {
+    ): Result<ProductDto> = withContext(dispatcher) {
         try {
             val productRequest = ProductRequest(
                 nombre = nombre,
@@ -144,6 +184,17 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
 
     /**
      * Actualizar un producto existente (Admin)
+     *
+     * Requiere permisos de administrador en el backend
+     * Actualiza todos los campos del producto
+     *
+     * @param productId ID del producto a actualizar
+     * @param nombre Nuevo nombre del producto
+     * @param categoria Nueva categoría
+     * @param imagen Nueva URL de imagen
+     * @param descripcion Nueva descripción
+     * @param precio Nuevo precio
+     * @param stock Nueva cantidad en stock
      */
     suspend fun updateProduct(
         productId: Long,
@@ -153,7 +204,7 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
         descripcion: String,
         precio: Int,
         stock: Int
-    ): Result<ProductDto> = withContext(Dispatchers.IO) {
+    ): Result<ProductDto> = withContext(dispatcher) {
         try {
             val productRequest = ProductRequest(
                 nombre = nombre,
@@ -176,8 +227,14 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
 
     /**
      * Eliminar un producto (Admin)
+     *
+     * Requiere permisos de administrador en el backend
+     * Operación irreversible - el producto se elimina permanentemente
+     *
+     * @param productId ID del producto a eliminar
+     * @return Result<Unit> - éxito sin datos o error con mensaje
      */
-    suspend fun deleteProduct(productId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun deleteProduct(productId: Long): Result<Unit> = withContext(dispatcher) {
         try {
             val response = apiService.deleteProduct(productId)
             if (response.success) {
