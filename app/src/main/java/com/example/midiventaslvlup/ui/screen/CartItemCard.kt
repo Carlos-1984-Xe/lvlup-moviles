@@ -44,10 +44,8 @@ fun CartItemCard(
         ) {
             // Imagen del producto
             AsyncImage(
-                // ✅ CORRECCIÓN: Si la imagen es nula, usa una cadena vacía para evitar el crash.
-                model = item.productImage ?: "",
-                // ✅ CORRECCIÓN: Si el nombre es nulo, usa un texto genérico.
-                contentDescription = item.productName ?: "Imagen de producto",
+                model = item.productImage,  // ✅ Ya no es nullable
+                contentDescription = item.productName,
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(8.dp))
@@ -62,8 +60,7 @@ fun CartItemCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    // ✅ CORRECCIÓN: Proporciona un valor por defecto si el nombre es nulo.
-                    text = item.productName ?: "Producto no disponible",
+                    text = item.productName,  // ✅ Ya no es nullable
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -73,8 +70,7 @@ fun CartItemCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    // ✅ CORRECCIÓN: Proporciona un valor por defecto.
-                    text = item.productCategory ?: "Sin categoría",
+                    text = item.productCategory,  // ✅ Ya no es nullable
                     fontSize = 12.sp,
                     color = GreenPrimary
                 )
@@ -82,15 +78,13 @@ fun CartItemCard(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    // ✅ CORRECCIÓN: Usa 0 como precio por defecto si es nulo.
-                    text = "Precio: $${item.unitPrice ?: 0}",
+                    text = "Precio: $${item.unitPrice.toInt()}",  // ✅ Convertir Double a Int
                     fontSize = 14.sp,
                     color = Color.LightGray
                 )
 
                 Text(
-                    // ✅ CORRECCIÓN: Usa 0 como subtotal por defecto si es nulo.
-                    text = "Subtotal: $${item.subtotal ?: 0}",
+                    text = "Subtotal: $${item.subtotal}",  // ✅ Ya es calculado como Int
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = GreenPrimary
@@ -137,7 +131,6 @@ fun CartItemCard(
 
                     // Cantidad
                     Text(
-                        // La cantidad rara vez será nula, pero es buena práctica protegerla también.
                         text = "${item.quantity}",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,

@@ -75,8 +75,8 @@ class CartViewModel(
                 .onSuccess { cartDto ->
                     _cart.value = cartDto
                     _cartItems.value = cartDto?.items ?: emptyList()
-                    _cartTotal.value = cartDto?.total ?: 0
-                    _itemCount.value = cartDto?.itemCount ?: 0
+                    _cartTotal.value = cartDto?.getTotal() ?: 0  // ✅ CAMBIO
+                    _itemCount.value = cartDto?.getItemCount() ?: 0  // ✅ CAMBIO
                     calculateFinalTotal()
                 }
                 .onFailure { exception ->
@@ -103,8 +103,8 @@ class CartViewModel(
                 .onSuccess { cartDto ->
                     _cart.value = cartDto
                     _cartItems.value = cartDto.items
-                    _cartTotal.value = cartDto.total
-                    _itemCount.value = cartDto.itemCount
+                    _cartTotal.value = cartDto.getTotal()  // ✅ CAMBIO
+                    _itemCount.value = cartDto.getItemCount()  // ✅ CAMBIO
                     calculateFinalTotal()
 
                     Toast.makeText(
@@ -137,8 +137,8 @@ class CartViewModel(
                 .onSuccess { cartDto ->
                     _cart.value = cartDto
                     _cartItems.value = cartDto.items
-                    _cartTotal.value = cartDto.total
-                    _itemCount.value = cartDto.itemCount
+                    _cartTotal.value = cartDto.getTotal()  // ✅ CAMBIO
+                    _itemCount.value = cartDto.getItemCount()  // ✅ CAMBIO
                     calculateFinalTotal()
                 }
                 .onFailure { exception ->
@@ -163,8 +163,8 @@ class CartViewModel(
                 .onSuccess { cartDto ->
                     _cart.value = cartDto
                     _cartItems.value = cartDto.items
-                    _cartTotal.value = cartDto.total
-                    _itemCount.value = cartDto.itemCount
+                    _cartTotal.value = cartDto.getTotal()  // ✅ CAMBIO
+                    _itemCount.value = cartDto.getItemCount()  // ✅ CAMBIO
                     calculateFinalTotal()
                 }
                 .onFailure { exception ->
@@ -189,8 +189,8 @@ class CartViewModel(
                 .onSuccess { cartDto ->
                     _cart.value = cartDto
                     _cartItems.value = cartDto.items
-                    _cartTotal.value = cartDto.total
-                    _itemCount.value = cartDto.itemCount
+                    _cartTotal.value = cartDto.getTotal()  // ✅ CAMBIO
+                    _itemCount.value = cartDto.getItemCount()  // ✅ CAMBIO
                     calculateFinalTotal()
                 }
                 .onFailure { exception ->
@@ -215,8 +215,8 @@ class CartViewModel(
                 .onSuccess { cartDto ->
                     _cart.value = cartDto
                     _cartItems.value = cartDto.items
-                    _cartTotal.value = cartDto.total
-                    _itemCount.value = cartDto.itemCount
+                    _cartTotal.value = cartDto.getTotal()  // ✅ CAMBIO
+                    _itemCount.value = cartDto.getItemCount()  // ✅ CAMBIO
                     calculateFinalTotal()
 
                     Toast.makeText(
@@ -365,9 +365,6 @@ class CartViewModel(
     fun clearError() {
         _error.value = null
     }
-
-    // Al final del archivo CartViewModel.kt
-
 }
 
 class CartViewModelFactory(
