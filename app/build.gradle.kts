@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    // Agregar Jacoco para cobertura de código
     jacoco
 }
 
@@ -58,7 +57,7 @@ android {
         }
     }
 
-    // Configuración de packaging para evitar conflictos
+    // Configuración de packaging
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

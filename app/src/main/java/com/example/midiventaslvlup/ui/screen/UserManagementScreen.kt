@@ -222,7 +222,7 @@ private fun EditUserForm(viewModel: UserViewModel, onActionDone: () -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- FORMULARIO COMPLETO ---
+        // formulario completo
         if (foundUser != null) {
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = email, onValueChange = { /* No-op */ }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), enabled = false)

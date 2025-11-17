@@ -15,7 +15,6 @@ data class CartItemDto(
     @SerializedName("unitPrice")
     val unitPrice: Double  // ✅ CAMBIO: Double en lugar de Int
 ) {
-    // ✅ Propiedades calculadas para mantener compatibilidad con tu UI
     val productId: Long get() = product.id
     val productName: String get() = product.nombre
     val productImage: String get() = product.imagen
@@ -24,7 +23,6 @@ data class CartItemDto(
     val subtotal: Int get() = (unitPrice * quantity).toInt()
 }
 
-// ✅ NUEVO: DTO para el producto dentro del carrito
 data class ProductInCart(
     @SerializedName("id")
     val id: Long,
@@ -70,7 +68,6 @@ data class CartDto(
     @SerializedName("itemCount")
     val itemCount: Int? = null  // ✅ Opcional, lo calculamos si no viene
 ) {
-    // ✅ Métodos helper para calcular valores si no vienen del backend
     fun getTotal(): Int = total ?: items.sumOf { it.subtotal }
     fun getItemCount(): Int = itemCount ?: items.size
 }

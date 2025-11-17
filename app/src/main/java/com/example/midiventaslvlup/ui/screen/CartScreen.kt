@@ -32,10 +32,8 @@ fun CartScreen(
 ) {
     val context = LocalContext.current
 
-    // ✅ OBTENER USERID DE LA SESIÓN
     val userId = SessionManager.getUserId(context)
 
-    // ✅ CREAR REPOSITORIOS Y VIEWMODEL (usando RetrofitClient por defecto)
     val cartRepository = remember { CartRepository() }
     val orderRepository = remember { OrderRepository() }
 

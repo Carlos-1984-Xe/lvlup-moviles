@@ -59,7 +59,6 @@ class UserRepository {
         }
     }
 
-    // ✅ CORREGIDO: Esta función ahora construye el Map<String, String> que el backend espera
     suspend fun updateUser(id: Long, user: UserResponse): Result<UserResponse> {
         val updateData = mapOf(
             "nombre" to user.nombre,

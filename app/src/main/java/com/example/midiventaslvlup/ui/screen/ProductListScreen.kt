@@ -42,7 +42,7 @@ import com.example.midiventaslvlup.viewmodel.ProductViewModelFactory
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductListScreen(
-    onProductClick: (Long) -> Unit, // Callback para navegar al detalle
+    onProductClick: (Long) -> Unit, // Callback para manejar el clic en un producto
     productViewModel: ProductViewModel = viewModel(factory = ProductViewModelFactory(ProductRepository()))
 ) {
     val products by productViewModel.products.collectAsState()
@@ -50,7 +50,6 @@ fun ProductListScreen(
     val selectedCategory by productViewModel.selectedCategory.collectAsState()
     val isLoading by productViewModel.isLoading.collectAsState()
 
-    // ✅ Disparamos la carga inicial de productos solo una vez
     LaunchedEffect(Unit) {
         productViewModel.loadProducts()
     }

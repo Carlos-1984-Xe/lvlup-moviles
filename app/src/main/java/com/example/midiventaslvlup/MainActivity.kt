@@ -124,7 +124,6 @@ class MainActivity : ComponentActivity() {
                                 categoria = categoria,
                                 onBackClick = { navController.popBackStack() },
                                 onProductClick = { producto ->
-                                    // ✅ CAMBIADO: ProductDto tiene Long id en lugar de Int
                                     navController.navigate("productDetail/${producto.id}")
                                 }
                             )
@@ -132,9 +131,9 @@ class MainActivity : ComponentActivity() {
 
                         composable(
                             route = "productDetail/{productId}",
-                            arguments = listOf(navArgument("productId") { type = NavType.LongType })  // ✅
+                            arguments = listOf(navArgument("productId") { type = NavType.LongType })
                         ) { backStackEntry ->
-                            val productId = backStackEntry.arguments?.getLong("productId") ?: 0L  // ✅
+                            val productId = backStackEntry.arguments?.getLong("productId") ?: 0L
                             DetalleProductoScreen(
                                 productId = productId,
                                 modifier = Modifier.fillMaxSize(),

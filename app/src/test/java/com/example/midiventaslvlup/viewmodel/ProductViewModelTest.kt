@@ -52,10 +52,9 @@ class ProductViewModelTest {
         )
         val expectedCategories = listOf("Todos") + serverCategories
 
-        // Reconfigurar el mock para este test específico
         coEvery { mockRepository.getAllCategories() } returns Result.success(expectedCategories)
 
-        // ACT - Crear nuevo ViewModel para este test
+        // ACT
         val testViewModel = ProductViewModel(productRepository = mockRepository)
         advanceUntilIdle() // Esperar a que se complete la corrutina
 
@@ -235,15 +234,15 @@ class ProductViewModelTest {
 
     @Test
     fun `selectCategory no recarga si es la misma categoria`() = runTest {
-        // ARRANGE - No configuramos mocks para productos porque no debería llamarse
+        // ARRANGE
         coEvery { mockRepository.getAllProducts() } returns Result.success(emptyList())
 
-        // ACT: Intentar seleccionar la misma categoría dos veces
+        // ACT
         viewModel.selectCategory("Todos")
         viewModel.selectCategory("Todos")
         advanceUntilIdle()
 
-        // ASSERT: Solo debe llamar una vez al repository (en el setup inicial)
+        // ASSERT
         coVerify(exactly = 0) { mockRepository.getProductsByCategory(any()) }
     }
 
@@ -539,7 +538,7 @@ class ProductViewModelTest {
 
     @Test
     fun `resetProductActionSuccess resetea el flag de accion exitosa`() = runTest {
-        // ARRANGE: Simular una acción exitosa
+        // ARRANGE
         val newProduct = ProductDto(100L, "Test", "Mouse", "img", "desc", 10000, 5)
 
         coEvery { mockRepository.createProduct(any(), any(), any(), any(), any(), any()) } returns Result.success(newProduct)
