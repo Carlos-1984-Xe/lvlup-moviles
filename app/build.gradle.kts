@@ -165,17 +165,18 @@ dependencies {
     // Compose UI Testing
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
-    // AndroidX Test Runner
-    androidTestImplementation("androidx.test:runner:1.5.2")
+    // AndroidX Test Runner and Rules
+    androidTestImplementation("androidx.test:runner:1.5.0")
     androidTestImplementation("androidx.test:rules:1.5.0")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.ext:junit-ktx:1.1.5")
 
-    // Espresso (opcional, para casos avanzados)
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    // Espresso
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.0")
 
     // MockK para Android Tests
     androidTestImplementation("io.mockk:mockk-android:1.13.8")
@@ -190,8 +191,6 @@ dependencies {
     // LEGACY TESTS (los que ya tenías)
     // ============================================
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
 }
 
 // ============================================

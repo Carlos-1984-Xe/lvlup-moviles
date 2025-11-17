@@ -106,12 +106,6 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(key1 = loginState.errorMessage) {
-        loginState.errorMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        }
-    }
-
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -163,6 +157,15 @@ fun LoginScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true
                     )
+                    
+                    loginState.errorMessage?.let { error ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
                         onClick = { loginViewModel.login() },

@@ -20,9 +20,11 @@ data class LoginState(
     val user: LoginResponse? = null
 )
 
-class LoginViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val authRepository = AuthRepository()
+// ✅ CAMBIO: Añadimos authRepository como parámetro con valor por defecto
+class LoginViewModel(
+    application: Application,
+    private val authRepository: AuthRepository = AuthRepository()
+) : AndroidViewModel(application) {
 
     private val _loginState = MutableStateFlow(LoginState())
     val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
@@ -44,11 +46,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     fun login() {
         val currentState = _loginState.value
 
-        // Validaciones básicas
         if (currentState.usuario.isBlank() || currentState.contrasena.isBlank()) {
-            _loginState.value = currentState.copy(
-                errorMessage = "Por favor complete todos los campos"
-            )
+            _loginState.value = currentState.copy(errorMessage = "Por favor complete todos los campos")
             return
         }
 
@@ -57,35 +56,29 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 Log.d("LoginViewModel", "Intentando login con: ${currentState.usuario}")
-
                 val result = authRepository.login(
                     correo = currentState.usuario.trim(),
                     contrasena = currentState.contrasena
                 )
-
-                if (result.isSuccess) {
-                    val user = result.getOrNull()!!
+                result.onSuccess { user ->
                     Log.d("LoginViewModel", "Login exitoso: ${user.nombre}, Rol: ${user.rol}")
-
-                    _loginState.value = currentState.copy(
+                    _loginState.value = _loginState.value.copy(
                         isLoading = false,
                         loginSuccess = true,
                         user = user,
                         errorMessage = null
                     )
-                } else {
-                    val error = result.exceptionOrNull()
-                    Log.e("LoginViewModel", "Error en login: ${error?.message}")
-
-                    _loginState.value = currentState.copy(
+                }.onFailure { error ->
+                    Log.e("LoginViewModel", "Error en login: ${error.message}")
+                    _loginState.value = _loginState.value.copy(
                         isLoading = false,
                         loginSuccess = false,
-                        errorMessage = error?.message ?: "Usuario o contraseña incorrectos"
+                        errorMessage = error.message ?: "Usuario o contraseña incorrectos"
                     )
                 }
             } catch (e: Exception) {
                 Log.e("LoginViewModel", "Error al iniciar sesión", e)
-                _loginState.value = currentState.copy(
+                _loginState.value = _loginState.value.copy(
                     isLoading = false,
                     loginSuccess = false,
                     errorMessage = "Error de conexión: ${e.localizedMessage}"
