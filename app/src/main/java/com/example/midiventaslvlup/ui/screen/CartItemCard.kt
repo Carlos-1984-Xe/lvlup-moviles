@@ -18,12 +18,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.midiventaslvlup.network.dto.CartItemDto  // ✅ CAMBIADO
+import com.example.midiventaslvlup.network.dto.CartItemDto
 import com.example.midiventaslvlup.ui.theme.GreenPrimary
 
 @Composable
 fun CartItemCard(
-    item: CartItemDto,  // ✅ CAMBIADO de CartItemEntity a CartItemDto
+    item: CartItemDto,
     onIncreaseQuantity: () -> Unit,
     onDecreaseQuantity: () -> Unit,
     onRemove: () -> Unit
@@ -44,8 +44,10 @@ fun CartItemCard(
         ) {
             // Imagen del producto
             AsyncImage(
-                model = item.productImage,  // ✅ CAMBIADO de item.imagen
-                contentDescription = item.productName,  // ✅ CAMBIADO de item.nombre
+                // ✅ CORRECCIÓN: Si la imagen es nula, usa una cadena vacía para evitar el crash.
+                model = item.productImage ?: "",
+                // ✅ CORRECCIÓN: Si el nombre es nulo, usa un texto genérico.
+                contentDescription = item.productName ?: "Imagen de producto",
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(8.dp))
@@ -60,7 +62,8 @@ fun CartItemCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = item.productName,  // ✅ CAMBIADO de item.nombre
+                    // ✅ CORRECCIÓN: Proporciona un valor por defecto si el nombre es nulo.
+                    text = item.productName ?: "Producto no disponible",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -70,7 +73,8 @@ fun CartItemCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = item.productCategory,  // ✅ CAMBIADO de item.categoria
+                    // ✅ CORRECCIÓN: Proporciona un valor por defecto.
+                    text = item.productCategory ?: "Sin categoría",
                     fontSize = 12.sp,
                     color = GreenPrimary
                 )
@@ -78,13 +82,15 @@ fun CartItemCard(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Precio: $${item.unitPrice}",  // ✅ CAMBIADO de item.precio
+                    // ✅ CORRECCIÓN: Usa 0 como precio por defecto si es nulo.
+                    text = "Precio: $${item.unitPrice ?: 0}",
                     fontSize = 14.sp,
                     color = Color.LightGray
                 )
 
                 Text(
-                    text = "Subtotal: $${item.subtotal}",  // ✅ Igual
+                    // ✅ CORRECCIÓN: Usa 0 como subtotal por defecto si es nulo.
+                    text = "Subtotal: $${item.subtotal ?: 0}",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = GreenPrimary
@@ -131,7 +137,8 @@ fun CartItemCard(
 
                     // Cantidad
                     Text(
-                        text = "${item.quantity}",  // ✅ CAMBIADO de item.cantidad
+                        // La cantidad rara vez será nula, pero es buena práctica protegerla también.
+                        text = "${item.quantity}",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,

@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -253,8 +255,10 @@ fun DetalleProductoScreen(
 
                         Button(
                             onClick = {
-                                // ✅ CAMBIADO: usar productId en lugar del objeto completo
-                                cartViewModel.addToCart(productData.id)
+                                // ✅ CORRECCIÓN: La función addToCart necesita saber qué producto
+                                // y QUÉ CANTIDAD agregar. Como no hay selector, enviamos 1 por defecto.
+                                // El ViewModel ya conoce al usuario (userId) porque se lo pasaste en su Factory.
+                                cartViewModel.addToCart(productId = productData.id, quantity = 1)
                                 showAddedSnackbar = true
                             },
                             modifier = Modifier.fillMaxWidth(),
