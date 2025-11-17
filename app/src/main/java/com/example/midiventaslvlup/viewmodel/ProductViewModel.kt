@@ -35,7 +35,7 @@ class ProductViewModel(private val productRepository: ProductRepository) : ViewM
 
     init {
         loadCategories()
-        // ✅ HEMOS QUITADO loadProducts() de aquí para evitar la race condition.
+        //  quitamos loadProducts() de aquí para evitar la race condition.
         // La vista será ahora responsable de la carga inicial.
     }
 

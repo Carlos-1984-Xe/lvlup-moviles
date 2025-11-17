@@ -10,29 +10,7 @@ import org.junit.jupiter.api.extension.AfterEachCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 
-/**
- * JUnit 5 Extension para configurar TestDispatcher en tests de corrutinas
- *
- * Esta regla se encarga de:
- * 1. Configurar un TestDispatcher para controlar las corrutinas en tests
- * 2. Reemplazar Dispatchers.Main con el TestDispatcher
- * 3. Limpiar la configuración después de cada test
- *
- * Uso:
- * ```kotlin
- * @ExtendWith(TestDispatcherRule::class)
- * class MyTest {
- *     @JvmField
- *     @RegisterExtension
- *     val testDispatcherRule = TestDispatcherRule()
- *
- *     @Test
- *     fun myTest() = runTest {
- *         // El dispatcher está disponible como testDispatcherRule.testDispatcher
- *     }
- * }
- * ```
- */
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class TestDispatcherRule : BeforeEachCallback, AfterEachCallback {
 

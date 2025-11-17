@@ -29,11 +29,6 @@ class DetalleProductoScreenTest {
         }
 
         // Assert
-        // Para que esto funcione, necesitamos una forma de identificar el indicador de carga.
-        // Asumiremos por ahora que el ViewModel inicia en estado de carga.
-        // Si el test falla, añadiremos un testTag al CircularProgressIndicator.
-        
-        // Por ahora, vamos a comprobar que no se muestra ningún producto, lo cual es un indicio.
         composeTestRule.onNodeWithText("Error al cargar el producto").assertDoesNotExist()
     }
 }

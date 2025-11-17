@@ -72,7 +72,6 @@ fun MainScreen(
     var showRegisterForm by rememberSaveable { mutableStateOf(false) }
 
     if (showRegisterForm) {
-        // La pantalla de registro ahora está refactorizada
         RegisterScreen(
             onRegisterSuccess = { showRegisterForm = false },
             onCancel = { showRegisterForm = false }
@@ -212,13 +211,11 @@ private fun guardarSesion(context: Context, user: LoginResponse) {
 @Composable
 private fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) {
     val context = LocalContext.current
-    // Instanciamos el ViewModel usando la Factory
     val registerViewModel: RegisterViewModel = viewModel(
         factory = RegisterViewModelFactory(AuthRepository())
     )
     val registerState by registerViewModel.registerState.collectAsState()
 
-    // Efecto para manejar el éxito del registro
     LaunchedEffect(registerState.registerSuccess) {
         if (registerState.registerSuccess) {
             Toast.makeText(context, "Usuario creado exitosamente. Ya puede iniciar sesión.", Toast.LENGTH_LONG).show()
@@ -226,7 +223,6 @@ private fun RegisterScreen(onRegisterSuccess: () -> Unit, onCancel: () -> Unit) 
         }
     }
 
-    // Efecto para mostrar errores
     LaunchedEffect(registerState.errorMessage) {
         registerState.errorMessage?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()

@@ -43,13 +43,13 @@ fun ProductosScreen(
     onProductClick: (ProductDto) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // ✅ USAR ProductRepository con Retrofit
+    // usar ProductRepository con Retrofit
     val productRepository = remember { ProductRepository() }
     val viewModel: ProductViewModel = viewModel(
         factory = ProductViewModelFactory(productRepository)
     )
 
-    // ✅ Seleccionar la categoría
+    // Seleccionar la categoría
     LaunchedEffect(categoria) {
         viewModel.selectCategory(categoria)
     }
@@ -98,7 +98,7 @@ fun ProductosScreen(
     ) { paddingValues ->
         when {
             isLoading -> {
-                // ✅ Mostrar loading
+                //  Mostrar loading
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -109,7 +109,7 @@ fun ProductosScreen(
                 }
             }
             error != null -> {
-                // ✅ Mostrar error
+                //  Mostrar error
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -181,7 +181,7 @@ fun ProductosScreen(
                 }
             }
             else -> {
-                // ✅ Grid de productos
+                //  Grid de productos
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     modifier = modifier
@@ -205,7 +205,7 @@ fun ProductosScreen(
 
 @Composable
 fun ProductCard(
-    producto: ProductDto,  // ✅ CAMBIADO de ExpenseEntity a ProductDto
+    producto: ProductDto,  //  camibo de ExpenseEntity a ProductDto
     onClick: () -> Unit
 ) {
     Card(

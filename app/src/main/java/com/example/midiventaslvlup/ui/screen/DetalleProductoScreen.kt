@@ -49,11 +49,9 @@ fun DetalleProductoScreen(
 
     val context = LocalContext.current
 
-    // ✅ OBTENER USERID DE LA SESIÓN
     val userId = SessionManager.getUserId(context)
 
-    // ✅ CREAR REPOSITORIOS Y VIEWMODELS (usando RetrofitClient por defecto)
-    val productRepository = remember { ProductRepository() }  // ✅ Sin parámetros
+    val productRepository = remember { ProductRepository() }
     val viewModel: DetalleProductoViewModel = viewModel(
         factory = DetalleProductoViewModelFactory(productRepository, productId)
     )
@@ -61,8 +59,8 @@ fun DetalleProductoScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    val cartRepository = remember { CartRepository() }  // ✅ Sin parámetros
-    val orderRepository = remember { OrderRepository() }  // ✅ Sin parámetros
+    val cartRepository = remember { CartRepository() }
+    val orderRepository = remember { OrderRepository() }
 
     val cartViewModel: CartViewModel = viewModel(
         factory = CartViewModelFactory(
@@ -183,13 +181,11 @@ fun DetalleProductoScreen(
         ) {
             when {
                 isLoading -> {
-                    // ✅ Mostrar loading
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
                 error != null -> {
-                    // ✅ Mostrar error
                     Column(
                         modifier = Modifier
                             .align(Alignment.Center)
@@ -213,7 +209,6 @@ fun DetalleProductoScreen(
                     }
                 }
                 product != null -> {
-                    // ✅ Mostrar producto
                     val productData = product!!
                     Column(
                         modifier = Modifier
@@ -255,9 +250,6 @@ fun DetalleProductoScreen(
 
                         Button(
                             onClick = {
-                                // ✅ CORRECCIÓN: La función addToCart necesita saber qué producto
-                                // y QUÉ CANTIDAD agregar. Como no hay selector, enviamos 1 por defecto.
-                                // El ViewModel ya conoce al usuario (userId) porque se lo pasaste en su Factory.
                                 cartViewModel.addToCart(productId = productData.id, quantity = 1)
                                 showAddedSnackbar = true
                             },
@@ -293,7 +285,6 @@ fun DetalleProductoScreen(
             }
         }
 
-        // ✅ Snackbar de confirmación
         LaunchedEffect(showAddedSnackbar) {
             if (showAddedSnackbar) {
                 snackbarHostState.showSnackbar(

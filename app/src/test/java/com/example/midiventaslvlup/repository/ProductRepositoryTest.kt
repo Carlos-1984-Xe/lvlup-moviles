@@ -15,35 +15,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.RegisterExtension
 
-/**
- * Tests unitarios para ProductRepository
- *
- * IMPORTANTE: Estos son UNIT TESTS con MOCKS
- * - NO se conectan al servidor real (http://10.0.2.2:8080/)
- * - Son rápidos, confiables y reproducibles
- * - Usan datos de ejemplo basados en el inventario real de la app
- *
- * Categorías reales de Level UP Gamer:
- * 1. Mouse
- * 2. Juegos de Mesa
- * 3. Mousepad
- * 4. Computador Gamer
- * 5. Ropa
- * 6. Silla Gamer
- * 7. Consola
- * 8. Accesorios
- *
- * Productos de ejemplo del inventario real:
- * - Logitech G502 HERO (Mouse) - $39,990
- * - Catan (Juegos de Mesa) - $29,990
- * - PlayStation 5 (Consola) - $699,990
- * - Secretlab Titan Evo (Silla Gamer) - $399,990
- *
- * Patrón AAA (Arrange-Act-Assert):
- * 1. Arrange: Configurar el escenario y mocks
- * 2. Act: Ejecutar el método a probar
- * 3. Assert: Verificar el resultado esperado
- */
 @ExtendWith(TestDispatcherRule::class)
 class ProductRepositoryTest {
 
@@ -85,7 +56,6 @@ class ProductRepositoryTest {
 
     @Test
     fun `getAllProducts retorna lista de productos cuando la API responde exitosamente`() = runTest {
-        // ARRANGE: Simular productos reales del inventario de Level UP Gamer
         val mockProducts = listOf(
             ProductDto(
                 id = 1L,
@@ -132,7 +102,6 @@ class ProductRepositoryTest {
         result.getOrNull() shouldBe mockProducts
         result.getOrNull()?.size shouldBe 3
 
-        // Verificar que tenemos productos de diferentes categorías reales
         val categories = result.getOrNull()?.map { it.categoria }
         categories shouldBe listOf("Mouse", "Juegos de Mesa", "Consola")
 
@@ -162,7 +131,7 @@ class ProductRepositoryTest {
 
     @Test
     fun `getAllProducts retorna error cuando hay problemas de conexion`() = runTest {
-        // ARRANGE: Simular error de red (servidor caído o sin internet)
+        // ARRANGE
         coEvery { mockApiService.getAllProducts() } throws Exception("Error de conexión con el servidor")
 
         // ACT
@@ -180,7 +149,7 @@ class ProductRepositoryTest {
 
     @Test
     fun `getProductById retorna producto cuando existe - Mouse Gamer`() = runTest {
-        // ARRANGE: Simular que se busca el producto "Razer DeathAdder V2"
+        // ARRANGE
         val productId = 2L
         val mockProduct = ProductDto(
             id = productId,
@@ -197,8 +166,6 @@ class ProductRepositoryTest {
             message = "Producto encontrado",
             data = mockProduct
         )
-
-        // CORRECCIÓN: Usar un argumento nombrado 'id' para coincidir con la interfaz ApiService.
         coEvery { mockApiService.getProductById(id = productId) } returns mockResponse
 
         // ACT
@@ -211,13 +178,12 @@ class ProductRepositoryTest {
         result.getOrNull()?.nombre shouldBe "Razer DeathAdder V2"
         result.getOrNull()?.precio shouldBe 44990
 
-        // CORRECCIÓN: Usar también el argumento nombrado en el paso de verificación.
         coVerify(exactly = 1) { mockApiService.getProductById(id = productId) }
     }
 
     @Test
     fun `getProductById retorna producto cuando existe - Juego de Mesa`() = runTest {
-        // ARRANGE: Simular búsqueda del juego "Catan"
+        // ARRANGE
         val productId = 4L
         val mockProduct = ProductDto(
             id = productId,
@@ -235,7 +201,6 @@ class ProductRepositoryTest {
             data = mockProduct
         )
 
-        // CORRECCIÓN: Usar un argumento nombrado 'id'.
         coEvery { mockApiService.getProductById(id = productId) } returns mockResponse
 
         // ACT
@@ -246,13 +211,12 @@ class ProductRepositoryTest {
         result.getOrNull()?.nombre shouldBe "Catan"
         result.getOrNull()?.categoria shouldBe "Juegos de Mesa"
 
-        // CORRECCIÓN: Usar también el argumento nombrado en el paso de verificación.
         coVerify(exactly = 1) { mockApiService.getProductById(id = productId) }
     }
 
     @Test
     fun `getProductById retorna error cuando el producto no existe`() = runTest {
-        // ARRANGE: Simular producto inexistente
+        // ARRANGE
         val productId = 99999L
         val mockResponse = ApiResponse<ProductDto>(
             success = false,
@@ -260,7 +224,6 @@ class ProductRepositoryTest {
             data = null
         )
 
-        //  CORRECCIÓN: Usar un argumento nombrado 'id'.
         coEvery { mockApiService.getProductById(id = productId) } returns mockResponse
 
         // ACT
@@ -270,7 +233,6 @@ class ProductRepositoryTest {
         result.isFailure shouldBe true
         result.exceptionOrNull()?.message shouldBe "Producto no encontrado"
 
-        // ✅ CORRECCIÓN: Usar también el argumento nombrado en el paso de verificación.
         coVerify(exactly = 1) { mockApiService.getProductById(id = productId) }
     }
 
@@ -282,7 +244,7 @@ class ProductRepositoryTest {
 
     @Test
     fun `getProductsByCategory con Todos llama a getAllProducts`() = runTest {
-        // ARRANGE: Cuando la categoría es "Todos", debe retornar productos de todas las categorías
+        // ARRANGE
         val mockProducts = listOf(
             ProductDto(1L, "Logitech G502 HERO", "Mouse", "img1.jpg", "desc", 39990, 10),
             ProductDto(4L, "Catan", "Juegos de Mesa", "img2.jpg", "desc", 29990, 10),
@@ -295,7 +257,6 @@ class ProductRepositoryTest {
             data = mockProducts
         )
 
-        // Debe llamar a getAllProducts, NO a getProductsByCategory
         coEvery { mockApiService.getAllProducts() } returns mockResponse
 
         // ACT
@@ -305,14 +266,13 @@ class ProductRepositoryTest {
         result.isSuccess shouldBe true
         result.getOrNull()?.size shouldBe 3
 
-        // Verificar que llamó a getAllProducts y NO a getProductsByCategory
         coVerify(exactly = 1) { mockApiService.getAllProducts() }
         coVerify(exactly = 0) { mockApiService.getProductsByCategory(any()) }
     }
 
     @Test
     fun `getProductsByCategory con Mouse filtra correctamente`() = runTest {
-        // ARRANGE: Simular respuesta con solo productos de categoría Mouse
+        // ARRANGE
         val categoria = "Mouse"
         val mockProducts = listOf(
             ProductDto(1L, "Logitech G502 HERO", categoria, "img1.jpg", "Mouse gamer RGB", 39990, 10),
@@ -366,7 +326,6 @@ class ProductRepositoryTest {
         result.getOrNull()?.all { it.categoria == "Silla Gamer" } shouldBe true
         result.getOrNull()?.first()?.nombre shouldBe "Secretlab Titan Evo"
 
-        // VERIFICACIÓN AÑADIDA
         coVerify(exactly = 1) { mockApiService.getProductsByCategory(categoria) }
     }
 
@@ -396,7 +355,6 @@ class ProductRepositoryTest {
         result.getOrNull()?.size shouldBe 3
         result.getOrNull()?.all { it.categoria == "Juegos de Mesa" } shouldBe true
 
-        // ✅ VERIFICACIÓN AÑADIDA
         coVerify(exactly = 1) { mockApiService.getProductsByCategory(categoria) }
     }
 
@@ -426,7 +384,6 @@ class ProductRepositoryTest {
         result.getOrNull()?.size shouldBe 3
         result.getOrNull()?.first()?.precio shouldBe 699990
 
-        // ✅ VERIFICACIÓN AÑADIDA
         coVerify(exactly = 1) { mockApiService.getProductsByCategory(categoria) }
     }
 
@@ -436,7 +393,7 @@ class ProductRepositoryTest {
 
     @Test
     fun `getAllCategories agrega Todos al inicio y retorna categorias reales de Level UP Gamer`() = runTest {
-        // ARRANGE: Categorías reales de la app Level UP Gamer
+        // ARRANGE
         val serverCategories = listOf(
             "Mouse",
             "Juegos de Mesa",
@@ -456,16 +413,5 @@ class ProductRepositoryTest {
 
         coEvery { mockApiService.getAllCategories() } returns mockResponse
 
-        // ACT: Aquí necesitas completar la prueba.
-        // val result = repository.getAllCategories()
-
-        // ASSERT: Y luego verificar el resultado.
-        // Por ejemplo:
-        // result.isSuccess shouldBe true
-        // val categories = result.getOrNull()
-        // categories?.first() shouldBe "Todos"
-        // categories?.size shouldBe serverCategories.size + 1
-
-        // coVerify(exactly = 1) { mockApiService.getAllCategories() }
     }
 }

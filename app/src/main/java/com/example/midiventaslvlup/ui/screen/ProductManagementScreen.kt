@@ -153,7 +153,7 @@ private fun CreateProductForm(
     val context = LocalContext.current
     val productActionSuccess by viewModel.productActionSuccess.collectAsState()
     val error by viewModel.error.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState() // Cargando local
+    val isLoading by viewModel.isLoading.collectAsState()
 
     var nombre by remember { mutableStateOf("") }
     var imagen by remember { mutableStateOf("") }
@@ -166,8 +166,13 @@ private fun CreateProductForm(
     var selectedCategory by remember { mutableStateOf("") }
     var isCreatingNewCategory by remember { mutableStateOf(false) }
     var newCategoryName by remember { mutableStateOf("") }
-    
+
     val createNewCategoryOption = "Crear nueva categoría..."
+
+    // ✅ AGREGAR SOLO ESTO
+    LaunchedEffect(Unit) {
+        viewModel.loadCategories()
+    }
 
     LaunchedEffect(productActionSuccess) {
         if (productActionSuccess) {
@@ -193,44 +198,59 @@ private fun CreateProductForm(
     ) {
         Text("Crear Nuevo Producto", style = MaterialTheme.typography.headlineMedium)
 
-        OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre del producto") }, modifier = Modifier.fillMaxWidth())
-
-        ExposedDropdownMenuBox(
-            expanded = isDropdownExpanded,
-            onExpandedChange = { isDropdownExpanded = !it },
+        OutlinedTextField(
+            value = nombre,
+            onValueChange = { nombre = it },  // ✅ Corregir aquí: onChange con C mayúscula
+            label = { Text("Nombre del producto") },
             modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                value = if (isCreatingNewCategory) "Creando nueva..." else selectedCategory,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Categoría") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
-                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                placeholder = { Text("Selecciona una categoría") }
-            )
-            ExposedDropdownMenu(
-                expanded = isDropdownExpanded,
-                onDismissRequest = { isDropdownExpanded = false }
+        )
+        //  Mostrar loader si las categorías aún no cargan
+        if (categories.isEmpty() && isLoading) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                categories.filter { it != "Todos" }.forEach { category: String ->
+                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                Text("Cargando categorías...")
+            }
+        } else {
+            ExposedDropdownMenuBox(
+                expanded = isDropdownExpanded,
+                onExpandedChange = { isDropdownExpanded = !isDropdownExpanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = if (isCreatingNewCategory) "Creando nueva..."
+                           else selectedCategory.ifEmpty { "Selecciona una categoría" },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Categoría") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = isDropdownExpanded,
+                    onDismissRequest = { isDropdownExpanded = false }
+                ) {
+                    categories.filter { it != "Todos" }.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category) },
+                            onClick = {
+                                selectedCategory = category
+                                isCreatingNewCategory = false
+                                isDropdownExpanded = false
+                            }
+                        )
+                    }
                     DropdownMenuItem(
-                        text = { Text(category) },
+                        text = { Text(createNewCategoryOption) },
                         onClick = {
-                            selectedCategory = category
-                            isCreatingNewCategory = false
+                            isCreatingNewCategory = true
+                            selectedCategory = ""
                             isDropdownExpanded = false
                         }
                     )
                 }
-                DropdownMenuItem(
-                    text = { Text(createNewCategoryOption) },
-                    onClick = {
-                        isCreatingNewCategory = true
-                        selectedCategory = ""
-                        isDropdownExpanded = false
-                    }
-                )
             }
         }
 

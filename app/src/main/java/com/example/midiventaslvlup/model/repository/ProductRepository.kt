@@ -10,10 +10,6 @@ import kotlinx.coroutines.withContext
 
 /**
  * Repositorio para manejar las operaciones de productos
- *
- * @param apiService Servicio de API para hacer las peticiones HTTP
- * @param dispatcher Dispatcher para ejecutar las corrutinas (IO en producción, Test en pruebas)
- *                   Valor por defecto: Dispatchers.IO (operaciones de red/base de datos)
  */
 class ProductRepository(
     private val apiService: ApiService = RetrofitClient.apiService,
@@ -59,9 +55,6 @@ class ProductRepository(
 
     /**
      * Obtener producto por ID
-     *
-     * @param id ID único del producto a buscar
-     * @return Result con el ProductDto encontrado o un error
      */
     suspend fun getProductById(id: Long): Result<ProductDto> = withContext(dispatcher) {
         try {
@@ -79,10 +72,6 @@ class ProductRepository(
     /**
      * Obtener productos por categoría
      *
-     * @param categoria Nombre de la categoría ("Todos" retorna todos los productos)
-     *
-     * Lógica especial: Si categoria == "Todos", llama a getAllProducts()
-     * sino, filtra por la categoría específica
      */
     suspend fun getProductsByCategory(categoria: String): Result<List<ProductDto>> = withContext(dispatcher) {
         try {
@@ -105,8 +94,6 @@ class ProductRepository(
     /**
      * Obtener todas las categorías
      *
-     * Agrega automáticamente "Todos" al inicio de la lista
-     * para permitir ver todos los productos sin filtro
      */
     suspend fun getAllCategories(): Result<List<String>> = withContext(dispatcher) {
         try {
@@ -125,9 +112,6 @@ class ProductRepository(
 
     /**
      * Buscar productos por nombre
-     *
-     * @param name Texto a buscar en el nombre del producto
-     * @return Lista de productos que coinciden con el criterio de búsqueda
      */
     suspend fun searchProducts(name: String): Result<List<ProductDto>> = withContext(dispatcher) {
         try {
@@ -146,13 +130,7 @@ class ProductRepository(
      * Crear un nuevo producto (Admin)
      *
      * Requiere permisos de administrador en el backend
-     *
-     * @param nombre Nombre del producto
-     * @param categoria Categoría a la que pertenece
-     * @param imagen URL de la imagen del producto
-     * @param descripcion Descripción detallada
-     * @param precio Precio en la moneda configurada
-     * @param stock Cantidad disponible en inventario
+
      */
     suspend fun createProduct(
         nombre: String,
@@ -187,14 +165,7 @@ class ProductRepository(
      *
      * Requiere permisos de administrador en el backend
      * Actualiza todos los campos del producto
-     *
-     * @param productId ID del producto a actualizar
-     * @param nombre Nuevo nombre del producto
-     * @param categoria Nueva categoría
-     * @param imagen Nueva URL de imagen
-     * @param descripcion Nueva descripción
-     * @param precio Nuevo precio
-     * @param stock Nueva cantidad en stock
+
      */
     suspend fun updateProduct(
         productId: Long,
@@ -225,15 +196,7 @@ class ProductRepository(
         }
     }
 
-    /**
-     * Eliminar un producto (Admin)
-     *
-     * Requiere permisos de administrador en el backend
-     * Operación irreversible - el producto se elimina permanentemente
-     *
-     * @param productId ID del producto a eliminar
-     * @return Result<Unit> - éxito sin datos o error con mensaje
-     */
+
     suspend fun deleteProduct(productId: Long): Result<Unit> = withContext(dispatcher) {
         try {
             val response = apiService.deleteProduct(productId)

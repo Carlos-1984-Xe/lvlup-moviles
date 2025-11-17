@@ -20,7 +20,6 @@ data class LoginState(
     val user: LoginResponse? = null
 )
 
-// ✅ CAMBIO: Añadimos authRepository como parámetro con valor por defecto
 class LoginViewModel(
     application: Application,
     private val authRepository: AuthRepository = AuthRepository()
