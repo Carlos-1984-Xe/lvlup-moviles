@@ -62,7 +62,7 @@ class ProductRepositoryTest {
     fun setup() {
         mockApiService = mockk()
 
-        // 🧪 CLAVE: Inyectamos el testDispatcher al repositorio
+        // CLAVE: Inyectamos el testDispatcher al repositorio
         // Esto hace que todas las operaciones usen el dispatcher de prueba
         repository = ProductRepository(
             apiService = mockApiService,
@@ -88,7 +88,7 @@ class ProductRepositoryTest {
         // ARRANGE: Simular productos reales del inventario de Level UP Gamer
         val mockProducts = listOf(
             ProductDto(
-                productId = 1L,
+                id = 1L,
                 nombre = "Logitech G502 HERO",
                 categoria = "Mouse",
                 imagen = "https://m.media-amazon.com/images/I/61mpMH5TzkL._AC_SL1500_.jpg",
@@ -97,7 +97,7 @@ class ProductRepositoryTest {
                 stock = 10
             ),
             ProductDto(
-                productId = 4L,
+                id = 4L,
                 nombre = "Catan",
                 categoria = "Juegos de Mesa",
                 imagen = "https://media.falabella.com/falabellaCL/123069773_01/w=1500,h=1500,fit=pad",
@@ -106,7 +106,7 @@ class ProductRepositoryTest {
                 stock = 10
             ),
             ProductDto(
-                productId = 58L,
+                id = 58L,
                 nombre = "PlayStation 5",
                 categoria = "Consola",
                 imagen = "https://media.falabella.com/falabellaCL/126614736_01/w=800,h=800,fit=pad",
@@ -183,7 +183,7 @@ class ProductRepositoryTest {
         // ARRANGE: Simular que se busca el producto "Razer DeathAdder V2"
         val productId = 2L
         val mockProduct = ProductDto(
-            productId = productId,
+            id = productId,
             nombre = "Razer DeathAdder V2",
             categoria = "Mouse",
             imagen = "https://http2.mlstatic.com/D_NQ_NP_653924-MLC51868565175_102022-O.webp",
@@ -198,7 +198,7 @@ class ProductRepositoryTest {
             data = mockProduct
         )
 
-        // ✅ CORRECCIÓN: Usar un argumento nombrado 'id' para coincidir con la interfaz ApiService.
+        // CORRECCIÓN: Usar un argumento nombrado 'id' para coincidir con la interfaz ApiService.
         coEvery { mockApiService.getProductById(id = productId) } returns mockResponse
 
         // ACT
@@ -207,11 +207,11 @@ class ProductRepositoryTest {
         // ASSERT
         result.isSuccess shouldBe true
         result.getOrNull() shouldBe mockProduct
-        result.getOrNull()?.productId shouldBe productId
+        result.getOrNull()?.id shouldBe productId
         result.getOrNull()?.nombre shouldBe "Razer DeathAdder V2"
         result.getOrNull()?.precio shouldBe 44990
 
-        // ✅ CORRECCIÓN: Usar también el argumento nombrado en el paso de verificación.
+        // CORRECCIÓN: Usar también el argumento nombrado en el paso de verificación.
         coVerify(exactly = 1) { mockApiService.getProductById(id = productId) }
     }
 
@@ -220,7 +220,7 @@ class ProductRepositoryTest {
         // ARRANGE: Simular búsqueda del juego "Catan"
         val productId = 4L
         val mockProduct = ProductDto(
-            productId = productId,
+            id = productId,
             nombre = "Catan",
             categoria = "Juegos de Mesa",
             imagen = "https://media.falabella.com/falabellaCL/123069773_01/w=1500,h=1500,fit=pad",
@@ -235,7 +235,7 @@ class ProductRepositoryTest {
             data = mockProduct
         )
 
-        // ✅ CORRECCIÓN: Usar un argumento nombrado 'id'.
+        // CORRECCIÓN: Usar un argumento nombrado 'id'.
         coEvery { mockApiService.getProductById(id = productId) } returns mockResponse
 
         // ACT
@@ -246,7 +246,7 @@ class ProductRepositoryTest {
         result.getOrNull()?.nombre shouldBe "Catan"
         result.getOrNull()?.categoria shouldBe "Juegos de Mesa"
 
-        // ✅ CORRECCIÓN: Usar también el argumento nombrado en el paso de verificación.
+        // CORRECCIÓN: Usar también el argumento nombrado en el paso de verificación.
         coVerify(exactly = 1) { mockApiService.getProductById(id = productId) }
     }
 
@@ -260,7 +260,7 @@ class ProductRepositoryTest {
             data = null
         )
 
-        // ✅ CORRECCIÓN: Usar un argumento nombrado 'id'.
+        //  CORRECCIÓN: Usar un argumento nombrado 'id'.
         coEvery { mockApiService.getProductById(id = productId) } returns mockResponse
 
         // ACT
@@ -366,7 +366,7 @@ class ProductRepositoryTest {
         result.getOrNull()?.all { it.categoria == "Silla Gamer" } shouldBe true
         result.getOrNull()?.first()?.nombre shouldBe "Secretlab Titan Evo"
 
-        // ✅ VERIFICACIÓN AÑADIDA
+        // VERIFICACIÓN AÑADIDA
         coVerify(exactly = 1) { mockApiService.getProductsByCategory(categoria) }
     }
 

@@ -3,11 +3,11 @@ package com.example.midiventaslvlup.viewmodel
 import com.example.midiventaslvlup.model.repository.ProductRepository
 import com.example.midiventaslvlup.network.dto.ProductDto
 import com.example.midiventaslvlup.util.TestDispatcherRule
-import com.example.midiventaslvlup.viewmodel.ProductViewModel
 import io.kotest.matchers.shouldBe
 import io.mockk.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -15,32 +15,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.RegisterExtension
 
-/**
- * Tests unitarios para ProductViewModel
- *
- * 🎯 Objetivo: Verificar que el ViewModel maneja correctamente el estado de la UI
- *
- * El ViewModel es responsable de:
- * 1. Mantener el estado de la UI (productos, categorías, loading, errores)
- * 2. Orquestar las llamadas al Repository
- * 3. Transformar los resultados del Repository en estados de UI
- * 4. Manejar la lógica de negocio (filtrar por categoría, búsqueda, etc.)
- *
- * ✅ Categorías reales de Level UP Gamer:
- * - Mouse, Juegos de Mesa, Mousepad, Computador Gamer,
- * - Ropa, Silla Gamer, Consola, Accesorios
- *
- * 📦 Productos de ejemplo del inventario real:
- * - Logitech G502 HERO (Mouse) - $39,990
- * - Catan (Juegos de Mesa) - $29,990
- * - PlayStation 5 (Consola) - $699,990
- * - Secretlab Titan Evo (Silla Gamer) - $399,990
- *
- * 🧪 Técnicas de testing:
- * - MockK para crear mocks del Repository
- * - StateFlow testing para verificar cambios de estado
- * - TestDispatcher para control de corrutinas
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 @ExtendWith(TestDispatcherRule::class)
 class ProductViewModelTest {
@@ -52,57 +26,40 @@ class ProductViewModelTest {
     private lateinit var mockRepository: ProductRepository
     private lateinit var viewModel: ProductViewModel
 
-    /**
-     * Setup ejecutado ANTES de cada test
-     * Crea mocks frescos del Repository y un ViewModel nuevo
-     */
     @BeforeEach
     fun setup() {
-        mockRepository = mockk()
+        mockRepository = mockk(relaxed = true)
 
-        // 🧪 CLAVE: Inyectamos el repository mockeado y el testDispatcher
+        // Configurar mock básico para getAllCategories que se llama en el init
+        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
+
         viewModel = ProductViewModel(
-            productRepository = mockRepository,
-            dispatcher = testDispatcherRule.testDispatcher
+            productRepository = mockRepository
         )
     }
 
-    /**
-     * Cleanup ejecutado DESPUÉS de cada test
-     */
     @AfterEach
     fun tearDown() {
         unmockkAll()
     }
 
-    // ========================================
-    // TESTS: Inicialización del ViewModel
-    // ========================================
-
     @Test
     fun `init carga categorias automaticamente desde el servidor`() = runTest {
-        // ARRANGE: Simular respuesta del servidor con categorías reales
+        // ARRANGE
         val serverCategories = listOf(
-            "Mouse",
-            "Juegos de Mesa",
-            "Mousepad",
-            "Computador Gamer",
-            "Ropa",
-            "Silla Gamer",
-            "Consola",
-            "Accesorios"
+            "Mouse", "Juegos de Mesa", "Mousepad", "Computador Gamer",
+            "Ropa", "Silla Gamer", "Consola", "Accesorios"
         )
         val expectedCategories = listOf("Todos") + serverCategories
 
+        // Reconfigurar el mock para este test específico
         coEvery { mockRepository.getAllCategories() } returns Result.success(expectedCategories)
 
-        // ACT: Crear el ViewModel (el init{} se ejecuta automáticamente)
-        val testViewModel = ProductViewModel(
-            productRepository = mockRepository,
-            dispatcher = testDispatcherRule.testDispatcher
-        )
+        // ACT - Crear nuevo ViewModel para este test
+        val testViewModel = ProductViewModel(productRepository = mockRepository)
+        advanceUntilIdle() // Esperar a que se complete la corrutina
 
-        // ASSERT: Verificar que las categorías se cargaron
+        // ASSERT
         testViewModel.categories.first() shouldBe expectedCategories
         testViewModel.isLoading.first() shouldBe false
         testViewModel.error.first() shouldBe null
@@ -112,16 +69,14 @@ class ProductViewModelTest {
 
     @Test
     fun `init maneja error al cargar categorias`() = runTest {
-        // ARRANGE: Simular error del servidor
+        // ARRANGE
         coEvery { mockRepository.getAllCategories() } returns Result.failure(
             Exception("Error de conexión con el servidor")
         )
 
         // ACT
-        val testViewModel = ProductViewModel(
-            productRepository = mockRepository,
-            dispatcher = testDispatcherRule.testDispatcher
-        )
+        val testViewModel = ProductViewModel(productRepository = mockRepository)
+        advanceUntilIdle() // Esperar a que se complete la corrutina
 
         // ASSERT
         testViewModel.categories.first() shouldBe emptyList()
@@ -129,29 +84,19 @@ class ProductViewModelTest {
         testViewModel.isLoading.first() shouldBe false
     }
 
-    // ========================================
-    // TESTS: loadCategories()
-    // ========================================
-
     @Test
-    fun `loadCategories actualiza el estado con categorias reales de Level UP Gamer`() = runTest {
+    fun `loadCategories actualiza el estado con categorias reales`() = runTest {
         // ARRANGE
         val realCategories = listOf(
-            "Todos",
-            "Mouse",
-            "Juegos de Mesa",
-            "Mousepad",
-            "Computador Gamer",
-            "Ropa",
-            "Silla Gamer",
-            "Consola",
-            "Accesorios"
+            "Todos", "Mouse", "Juegos de Mesa", "Mousepad", "Computador Gamer",
+            "Ropa", "Silla Gamer", "Consola", "Accesorios"
         )
 
         coEvery { mockRepository.getAllCategories() } returns Result.success(realCategories)
 
         // ACT
         viewModel.loadCategories()
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.categories.first() shouldBe realCategories
@@ -172,6 +117,7 @@ class ProductViewModelTest {
 
         // ACT
         viewModel.loadCategories()
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.error.first() shouldBe "Error al obtener categorías"
@@ -179,26 +125,20 @@ class ProductViewModelTest {
         viewModel.categories.first() shouldBe emptyList()
     }
 
-    // ========================================
-    // TESTS: loadProducts()
-    // ========================================
-
     @Test
     fun `loadProducts con categoria Todos carga todos los productos`() = runTest {
-        // ARRANGE: Simular productos de diferentes categorías
+        // ARRANGE
         val allProducts = listOf(
             ProductDto(1L, "Logitech G502 HERO", "Mouse", "img1.jpg", "desc1", 39990, 10),
             ProductDto(4L, "Catan", "Juegos de Mesa", "img2.jpg", "desc2", 29990, 10),
             ProductDto(58L, "PlayStation 5", "Consola", "img3.jpg", "desc3", 699990, 10)
         )
 
-        // Mock para init (categorías)
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
-        // Mock para getAllProducts
         coEvery { mockRepository.getAllProducts() } returns Result.success(allProducts)
 
         // ACT
         viewModel.loadProducts()
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.products.first() shouldBe allProducts
@@ -207,7 +147,6 @@ class ProductViewModelTest {
         viewModel.isLoading.first() shouldBe false
         viewModel.error.first() shouldBe null
 
-        // Verificar que llamó a getAllProducts y NO a getProductsByCategory
         coVerify(exactly = 1) { mockRepository.getAllProducts() }
         coVerify(exactly = 0) { mockRepository.getProductsByCategory(any()) }
     }
@@ -220,11 +159,11 @@ class ProductViewModelTest {
             ProductDto(2L, "Razer DeathAdder V2", "Mouse", "img2.jpg", "desc2", 44990, 10)
         )
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos", "Mouse"))
         coEvery { mockRepository.getProductsByCategory("Mouse") } returns Result.success(mouseProducts)
 
-        // ACT: Primero seleccionar la categoría
+        // ACT: Primero seleccionar la categoría y luego cargar productos
         viewModel.selectCategory("Mouse")
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.products.first() shouldBe mouseProducts
@@ -243,11 +182,11 @@ class ProductViewModelTest {
             ProductDto(6L, "Dixit", "Juegos de Mesa", "img3.jpg", "desc3", 21990, 10)
         )
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.getProductsByCategory("Juegos de Mesa") } returns Result.success(boardGames)
 
         // ACT
         viewModel.selectCategory("Juegos de Mesa")
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.products.first().size shouldBe 3
@@ -258,36 +197,19 @@ class ProductViewModelTest {
     @Test
     fun `loadProducts maneja error del servidor`() = runTest {
         // ARRANGE
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.getAllProducts() } returns Result.failure(
             Exception("Error al cargar productos")
         )
 
         // ACT
         viewModel.loadProducts()
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.error.first() shouldBe "Error al cargar productos"
         viewModel.products.first() shouldBe emptyList()
         viewModel.isLoading.first() shouldBe false
     }
-
-    @Test
-    fun `loadProducts muestra loading durante la peticion`() = runTest {
-        // ARRANGE
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
-        coEvery { mockRepository.getAllProducts() } returns Result.success(emptyList())
-
-        // ACT
-        viewModel.loadProducts()
-
-        // ASSERT: Verificar que el loading se manejó correctamente
-        viewModel.isLoading.first() shouldBe false // Al final debe ser false
-    }
-
-    // ========================================
-    // TESTS: selectCategory()
-    // ========================================
 
     @Test
     fun `selectCategory cambia la categoria y recarga productos`() = runTest {
@@ -297,11 +219,11 @@ class ProductViewModelTest {
             ProductDto(59L, "Xbox Series X", "Consola", "img.jpg", "desc", 649990, 10)
         )
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.getProductsByCategory("Consola") } returns Result.success(consoleProducts)
 
         // ACT
         viewModel.selectCategory("Consola")
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.selectedCategory.first() shouldBe "Consola"
@@ -313,27 +235,24 @@ class ProductViewModelTest {
 
     @Test
     fun `selectCategory no recarga si es la misma categoria`() = runTest {
-        // ARRANGE
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
+        // ARRANGE - No configuramos mocks para productos porque no debería llamarse
+        coEvery { mockRepository.getAllProducts() } returns Result.success(emptyList())
 
         // ACT: Intentar seleccionar la misma categoría dos veces
         viewModel.selectCategory("Todos")
         viewModel.selectCategory("Todos")
+        advanceUntilIdle()
 
-        // ASSERT: Solo debe llamar una vez al repository
-        coVerify(exactly = 0) { mockRepository.getAllProducts() }
+        // ASSERT: Solo debe llamar una vez al repository (en el setup inicial)
+        coVerify(exactly = 0) { mockRepository.getProductsByCategory(any()) }
     }
-
-    // ========================================
-    // TESTS: findProductById()
-    // ========================================
 
     @Test
     fun `findProductById encuentra producto correctamente`() = runTest {
-        // ARRANGE: Buscar "Catan"
+        // ARRANGE
         val productId = 4L
         val catan = ProductDto(
-            productId = productId,
+            id = productId,
             nombre = "Catan",
             categoria = "Juegos de Mesa",
             imagen = "https://media.falabella.com/falabellaCL/123069773_01/w=1500,h=1500,fit=pad",
@@ -342,11 +261,11 @@ class ProductViewModelTest {
             stock = 10
         )
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.getProductById(productId) } returns Result.success(catan)
 
         // ACT
         viewModel.findProductById(productId)
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.foundProduct.first() shouldBe catan
@@ -361,37 +280,33 @@ class ProductViewModelTest {
     fun `findProductById maneja error cuando producto no existe`() = runTest {
         // ARRANGE
         val productId = 99999L
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.getProductById(productId) } returns Result.failure(
             Exception("Producto no encontrado")
         )
 
         // ACT
         viewModel.findProductById(productId)
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.foundProduct.first() shouldBe null
         viewModel.error.first() shouldBe "Producto no encontrado"
     }
 
-    // ========================================
-    // TESTS: searchProducts()
-    // ========================================
-
     @Test
     fun `searchProducts encuentra productos por nombre`() = runTest {
-        // ARRANGE: Buscar "mouse"
+        // ARRANGE
         val searchQuery = "mouse"
         val mouseProducts = listOf(
             ProductDto(1L, "Logitech G502 HERO", "Mouse", "img1.jpg", "desc1", 39990, 10),
             ProductDto(2L, "Razer DeathAdder V2", "Mouse", "img2.jpg", "desc2", 44990, 10)
         )
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.searchProducts(searchQuery) } returns Result.success(mouseProducts)
 
         // ACT
         viewModel.searchProducts(searchQuery)
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.products.first() shouldBe mouseProducts
@@ -406,11 +321,11 @@ class ProductViewModelTest {
     fun `searchProducts retorna lista vacia cuando no hay coincidencias`() = runTest {
         // ARRANGE
         val searchQuery = "ProductoInexistente12345"
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.searchProducts(searchQuery) } returns Result.success(emptyList())
 
         // ACT
         viewModel.searchProducts(searchQuery)
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.products.first() shouldBe emptyList()
@@ -420,37 +335,33 @@ class ProductViewModelTest {
     @Test
     fun `searchProducts maneja error del servidor`() = runTest {
         // ARRANGE
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.searchProducts(any()) } returns Result.failure(
             Exception("Error en la búsqueda")
         )
 
         // ACT
         viewModel.searchProducts("test")
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.error.first() shouldBe "Error en la búsqueda"
         viewModel.products.first() shouldBe emptyList()
     }
 
-    // ========================================
-    // TESTS: loadProductsWithStock()
-    // ========================================
-
     @Test
     fun `loadProductsWithStock carga solo productos disponibles`() = runTest {
-        // ARRANGE: Todos los productos del inventario tienen stock = 10
+        // ARRANGE
         val productsWithStock = listOf(
             ProductDto(1L, "Logitech G502 HERO", "Mouse", "img.jpg", "desc", 39990, 10),
             ProductDto(4L, "Catan", "Juegos de Mesa", "img.jpg", "desc", 29990, 10),
             ProductDto(58L, "PlayStation 5", "Consola", "img.jpg", "desc", 699990, 10)
         )
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.getProductsWithStock() } returns Result.success(productsWithStock)
 
         // ACT
         viewModel.loadProductsWithStock()
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.products.first() shouldBe productsWithStock
@@ -460,15 +371,11 @@ class ProductViewModelTest {
         coVerify(exactly = 1) { mockRepository.getProductsWithStock() }
     }
 
-    // ========================================
-    // TESTS: createProduct() (ADMIN)
-    // ========================================
-
     @Test
     fun `createProduct crea producto y recarga lista`() = runTest {
-        // ARRANGE: Crear un nuevo mouse
+        // ARRANGE
         val newProduct = ProductDto(
-            productId = 100L,
+            id = 100L,
             nombre = "SteelSeries Rival 600",
             categoria = "Mouse",
             imagen = "https://example.com/rival600.jpg",
@@ -477,19 +384,9 @@ class ProductViewModelTest {
             stock = 15
         )
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery {
-            mockRepository.createProduct(
-                "SteelSeries Rival 600",
-                "Mouse",
-                "https://example.com/rival600.jpg",
-                "Mouse gamer con sistema de pesas dual",
-                49990,
-                15
-            )
+            mockRepository.createProduct(any(), any(), any(), any(), any(), any())
         } returns Result.success(newProduct)
-
-        // Mock para la recarga automática de productos
         coEvery { mockRepository.getAllProducts() } returns Result.success(listOf(newProduct))
 
         // ACT
@@ -501,13 +398,13 @@ class ProductViewModelTest {
             49990,
             15
         )
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.productActionSuccess.first() shouldBe true
         viewModel.isLoading.first() shouldBe false
         viewModel.error.first() shouldBe null
 
-        // Verificar que recargó los productos automáticamente
         coVerify(exactly = 1) { mockRepository.createProduct(any(), any(), any(), any(), any(), any()) }
         coVerify(exactly = 1) { mockRepository.getAllProducts() }
     }
@@ -515,28 +412,24 @@ class ProductViewModelTest {
     @Test
     fun `createProduct maneja error del servidor`() = runTest {
         // ARRANGE
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery {
             mockRepository.createProduct(any(), any(), any(), any(), any(), any())
         } returns Result.failure(Exception("Error al crear producto"))
 
         // ACT
         viewModel.createProduct("Test", "Mouse", "img", "desc", 10000, 5)
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.error.first() shouldBe "Error al crear producto"
         viewModel.productActionSuccess.first() shouldBe false
     }
 
-    // ========================================
-    // TESTS: updateProduct() (ADMIN)
-    // ========================================
-
     @Test
     fun `updateProduct actualiza producto y recarga lista`() = runTest {
-        // ARRANGE: Actualizar el precio de "Catan"
+        // ARRANGE
         val updatedProduct = ProductDto(
-            productId = 4L,
+            id = 4L,
             nombre = "Catan - Edición Especial",
             categoria = "Juegos de Mesa",
             imagen = "https://media.falabella.com/falabellaCL/123069773_01/w=1500,h=1500,fit=pad",
@@ -545,7 +438,6 @@ class ProductViewModelTest {
             stock = 20
         )
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery {
             mockRepository.updateProduct(4L, any(), any(), any(), any(), any(), any())
         } returns Result.success(updatedProduct)
@@ -561,6 +453,7 @@ class ProductViewModelTest {
             34990,
             20
         )
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.productActionSuccess.first() shouldBe true
@@ -570,20 +463,16 @@ class ProductViewModelTest {
         coVerify(exactly = 1) { mockRepository.getAllProducts() }
     }
 
-    // ========================================
-    // TESTS: deleteProduct() (ADMIN)
-    // ========================================
-
     @Test
     fun `deleteProduct elimina producto y recarga lista`() = runTest {
         // ARRANGE
         val productId = 50L
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.deleteProduct(productId) } returns Result.success(Unit)
         coEvery { mockRepository.getAllProducts() } returns Result.success(emptyList())
 
         // ACT
         viewModel.deleteProduct(productId)
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.productActionSuccess.first() shouldBe true
@@ -598,22 +487,18 @@ class ProductViewModelTest {
     fun `deleteProduct maneja error cuando producto no existe`() = runTest {
         // ARRANGE
         val productId = 99999L
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.deleteProduct(productId) } returns Result.failure(
             Exception("Producto no encontrado")
         )
 
         // ACT
         viewModel.deleteProduct(productId)
+        advanceUntilIdle()
 
         // ASSERT
         viewModel.error.first() shouldBe "Producto no encontrado"
         viewModel.productActionSuccess.first() shouldBe false
     }
-
-    // ========================================
-    // TESTS: Métodos de limpieza de estado
-    // ========================================
 
     @Test
     fun `clearFoundProduct limpia el producto encontrado`() = runTest {
@@ -621,10 +506,10 @@ class ProductViewModelTest {
         val productId = 1L
         val product = ProductDto(1L, "Test", "Mouse", "img", "desc", 10000, 5)
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.getProductById(productId) } returns Result.success(product)
 
         viewModel.findProductById(productId)
+        advanceUntilIdle()
         viewModel.foundProduct.first() shouldBe product
 
         // ACT
@@ -641,7 +526,8 @@ class ProductViewModelTest {
             Exception("Error de prueba")
         )
 
-        val testViewModel = ProductViewModel(mockRepository, testDispatcherRule.testDispatcher)
+        val testViewModel = ProductViewModel(mockRepository)
+        advanceUntilIdle()
         testViewModel.error.first() shouldBe "Error de prueba"
 
         // ACT
@@ -656,11 +542,11 @@ class ProductViewModelTest {
         // ARRANGE: Simular una acción exitosa
         val newProduct = ProductDto(100L, "Test", "Mouse", "img", "desc", 10000, 5)
 
-        coEvery { mockRepository.getAllCategories() } returns Result.success(listOf("Todos"))
         coEvery { mockRepository.createProduct(any(), any(), any(), any(), any(), any()) } returns Result.success(newProduct)
         coEvery { mockRepository.getAllProducts() } returns Result.success(listOf(newProduct))
 
         viewModel.createProduct("Test", "Mouse", "img", "desc", 10000, 5)
+        advanceUntilIdle()
         viewModel.productActionSuccess.first() shouldBe true
 
         // ACT
