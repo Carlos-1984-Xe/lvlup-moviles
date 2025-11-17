@@ -1,5 +1,6 @@
 package com.example.midiventaslvlup.ui.screen
 
+import android.app.Application
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -49,6 +50,7 @@ import com.example.midiventaslvlup.model.enums.UserRole
 import com.example.midiventaslvlup.model.repository.AuthRepository
 import com.example.midiventaslvlup.network.dto.LoginResponse
 import com.example.midiventaslvlup.viewmodel.LoginViewModel
+import com.example.midiventaslvlup.viewmodel.LoginViewModelFactory
 import com.example.midiventaslvlup.viewmodel.RegisterViewModel
 import com.example.midiventaslvlup.viewmodel.RegisterViewModelFactory
 import java.text.SimpleDateFormat
@@ -60,9 +62,13 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     onNavigateToDetails: () -> Unit,
     onNavigateToAdmin: () -> Unit,
-    onNavigateToCart: () -> Unit = {},
-    loginViewModel: LoginViewModel = viewModel() // Asumimos que tienes LoginViewModelFactory configurado
+    onNavigateToCart: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val application = context.applicationContext as Application
+    val loginViewModel: LoginViewModel = viewModel(
+        factory = LoginViewModelFactory(application, AuthRepository())
+    )
     var showRegisterForm by rememberSaveable { mutableStateOf(false) }
 
     if (showRegisterForm) {
@@ -157,7 +163,7 @@ fun LoginScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         singleLine = true
                     )
-                    
+
                     loginState.errorMessage?.let { error ->
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
