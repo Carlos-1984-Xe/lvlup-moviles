@@ -10,21 +10,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Locale
 
-// Estado para la pantalla de gestión de usuarios
 data class UserManagementState(
-    // Para la lista de usuarios
     val users: List<UserResponse> = emptyList(),
     val isLoadingList: Boolean = false,
-
-    // Para buscar y editar
     val foundUser: UserResponse? = null,
     val isLoadingUser: Boolean = false,
     val searchEmail: String = "",
-
-    // Para mensajes y eventos
     val userMessage: String? = null,
     val userActionSuccess: Boolean = false
 )
@@ -35,11 +27,8 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
     val uiState: StateFlow<UserManagementState> = _uiState.asStateFlow()
 
     init {
-        // Cargar la lista de usuarios al iniciar el ViewModel
         getUsers()
     }
-
-    // --- ACCIONES ---
 
     fun getUsers() {
         viewModelScope.launch {
@@ -47,7 +36,7 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
             userRepository.getUsers().onSuccess { userList ->
                 _uiState.update { it.copy(users = userList, isLoadingList = false) }
             }.onFailure {
-                _uiState.update { it.copy(userMessage = "Error al cargar usuarios", isLoadingList = false) }
+                _uiState.update { it.copy(isLoadingList = false) }
             }
         }
     }
@@ -67,56 +56,70 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
         viewModelScope.launch {
             userRepository.createUser(request).onSuccess {
                 _uiState.update { it.copy(userMessage = "Usuario creado exitosamente", userActionSuccess = true) }
-                getUsers() // Refrescar la lista
+                getUsers()
             }.onFailure { error ->
                 _uiState.update { it.copy(userMessage = "Error al crear usuario: ${error.message}") }
             }
         }
     }
 
-    fun updateUser(user: UserResponse) {
+    fun updateUser(updatedUser: UserResponse) {
         viewModelScope.launch {
             _uiState.value.foundUser?.let { originalUser ->
-                userRepository.updateUser(originalUser.id, user).onSuccess { updatedUser ->
-                    _uiState.update {
-                        it.copy(
-                            userMessage = "Usuario actualizado",
-                            userActionSuccess = true,
-                            foundUser = updatedUser // Opcional: actualizar el usuario encontrado
-                        )
+                var success = true
+                var finalMessage = ""
+
+                // 1. Verificar si el perfil cambió y actualizar si es necesario
+                val profileChanged = originalUser.nombre != updatedUser.nombre ||
+                                     originalUser.apellido != updatedUser.apellido ||
+                                     originalUser.correo != updatedUser.correo
+                if (profileChanged) {
+                    val profileResult = userRepository.updateUser(originalUser.id, updatedUser)
+                    profileResult.onFailure {
+                        success = false
+                        finalMessage += "Error al actualizar perfil. "
                     }
+                }
+
+                // 2. Verificar si el rol cambió y actualizar si es necesario
+                if (originalUser.rol != updatedUser.rol && updatedUser.rol != null) {
+                    val roleResult = userRepository.changeUserRole(originalUser.id, updatedUser.rol)
+                    roleResult.onFailure {
+                        success = false
+                        finalMessage += "Error al cambiar rol."
+                    }
+                }
+                
+                if(success) {
+                    finalMessage = "Usuario actualizado correctamente"
                     getUsers() // Refrescar la lista
-                }.onFailure { error ->
-                    _uiState.update { it.copy(userMessage = "Error al actualizar: ${error.message}") }
+                }
+
+                _uiState.update {
+                    it.copy(
+                        userMessage = finalMessage,
+                        userActionSuccess = success
+                    )
                 }
             }
         }
     }
 
-    fun deleteUser(user: UserResponse) {
-        viewModelScope.launch {
-            userRepository.deleteUser(user.id).onSuccess {
-                _uiState.update { it.copy(userMessage = "Usuario eliminado", userActionSuccess = true) }
-                getUsers() // Refrescar la lista
-            }.onFailure { error ->
-                _uiState.update { it.copy(userMessage = "Error al eliminar: ${error.message}") }
-            }
-        }
-    }
-    
     fun deleteUserByEmail(email: String) {
         viewModelScope.launch {
-            val result = userRepository.getUserByEmail(email)
-            result.onSuccess { userToDelete ->
-                deleteUser(userToDelete)
+            userRepository.getUserByEmail(email).onSuccess { userToDelete ->
+                userRepository.deleteUser(userToDelete.id).onSuccess {
+                    _uiState.update { it.copy(userMessage = "Usuario eliminado", userActionSuccess = true) }
+                    getUsers()
+                }.onFailure { error ->
+                     _uiState.update { it.copy(userMessage = "Error al eliminar: ${error.message}") }
+                }
             }.onFailure {
                  _uiState.update { it.copy(userMessage = "Usuario no encontrado") }
             }
         }
     }
 
-    // --- MANEJO DE ESTADO ---
-    
     fun onSearchEmailChange(email: String) {
         _uiState.update { it.copy(searchEmail = email) }
     }

@@ -77,6 +77,12 @@ private fun CreateUserForm(viewModel: UserViewModel, onActionDone: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var rut by remember { mutableStateOf("") }
+    var fechaNacimiento by remember { mutableStateOf("") }
+    var telefono by remember { mutableStateOf("") }
+    var direccion by remember { mutableStateOf("") }
+    var region by remember { mutableStateOf("") }
+    var comuna by remember { mutableStateOf("") }
     var isAdmin by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.userMessage) {
@@ -95,12 +101,20 @@ private fun CreateUserForm(viewModel: UserViewModel, onActionDone: () -> Unit) {
     Column(
         modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Crear Nuevo Usuario", style = MaterialTheme.typography.headlineMedium)
+        
         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
         OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = rut, onValueChange = { rut = it }, label = { Text("RUT (ej: 12.345.678-9)") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = fechaNacimiento, onValueChange = { fechaNacimiento = it }, label = { Text("Fecha Nacimiento (dd/MM/yyyy)") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = telefono, onValueChange = { telefono = it }, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+        OutlinedTextField(value = direccion, onValueChange = { direccion = it }, label = { Text("Dirección") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = region, onValueChange = { region = it }, label = { Text("Región") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = comuna, onValueChange = { comuna = it }, label = { Text("Comuna") }, modifier = Modifier.fillMaxWidth())
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = isAdmin, onCheckedChange = { isAdmin = it })
             Text("Es Administrador")
@@ -109,12 +123,24 @@ private fun CreateUserForm(viewModel: UserViewModel, onActionDone: () -> Unit) {
             Button(onClick = onActionDone, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Cancelar") }
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = {
+                val birthDateMillis = try {
+                    SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(fechaNacimiento)?.time
+                } catch (e: Exception) {
+                    null
+                }
+
                 val request = RegisterRequest(
                     nombre = name.split(" ").firstOrNull() ?: "",
                     apellido = name.split(" ").getOrElse(1) { "" },
                     correo = email,
                     contrasena = password,
-                    rol = if (isAdmin) UserRole.ADMIN.name else UserRole.CLIENTE.name
+                    rol = if (isAdmin) UserRole.ADMIN.name else UserRole.CLIENTE.name,
+                    rut = rut,
+                    fechaNacimiento = birthDateMillis,
+                    telefono = telefono,
+                    direccion = direccion,
+                    region = region,
+                    comuna = comuna
                 )
                 viewModel.createUser(request)
             }) { Text("Crear") }
@@ -128,17 +154,34 @@ private fun EditUserForm(viewModel: UserViewModel, onActionDone: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
     val foundUser = uiState.foundUser
 
+    // Estados para todos los campos del formulario
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var rut by remember { mutableStateOf("") }
+    var fechaNacimiento by remember { mutableStateOf("") }
+    var telefono by remember { mutableStateOf("") }
+    var direccion by remember { mutableStateOf("") }
+    var region by remember { mutableStateOf("") }
+    var comuna by remember { mutableStateOf("") }
     var isAdmin by remember { mutableStateOf(false) }
 
+    // Cuando se encuentra un usuario, se rellenan todos los campos del formulario
     LaunchedEffect(foundUser) {
         foundUser?.let {
             name = "${it.nombre} ${it.apellido}".trim()
             email = it.correo
+            rut = it.rut ?: ""
+            fechaNacimiento = it.fechaNacimiento?.let { millis ->
+                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(millis))
+            } ?: ""
+            telefono = it.telefono ?: ""
+            direccion = it.direccion ?: ""
+            region = it.region ?: ""
+            comuna = it.comuna ?: ""
             isAdmin = it.rol == UserRole.ADMIN
         }
     }
+
     LaunchedEffect(uiState.userMessage) {
         uiState.userMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -154,34 +197,73 @@ private fun EditUserForm(viewModel: UserViewModel, onActionDone: () -> Unit) {
 
     DisposableEffect(Unit) { onDispose { viewModel.clearFoundUser() } }
 
-    Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(
+        modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         Text("Editar Usuario", style = MaterialTheme.typography.headlineMedium)
+
         Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(value = uiState.searchEmail, onValueChange = viewModel::onSearchEmailChange, label = { Text("Email del usuario") }, modifier = Modifier.weight(1f), singleLine = true, enabled = foundUser == null)
+            OutlinedTextField(
+                value = uiState.searchEmail,
+                onValueChange = viewModel::onSearchEmailChange,
+                label = { Text("Email del usuario") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                enabled = foundUser == null
+            )
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = { viewModel.findUserByEmail(uiState.searchEmail) }, enabled = foundUser == null) { Text("Buscar") }
+            Button(
+                onClick = { viewModel.findUserByEmail(uiState.searchEmail) },
+                enabled = foundUser == null
+            ) { Text("Buscar") }
         }
+
         Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, enabled = foundUser != null, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, enabled = foundUser != null, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Checkbox(checked = isAdmin, onCheckedChange = { isAdmin = it }, enabled = foundUser != null)
-            Text("Es Administrador")
-        }
-        Row {
-            Button(onClick = { viewModel.clearFoundUser(); onActionDone() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Cancelar") }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                foundUser?.let {
-                    val updatedUser = it.copy(
+
+        // --- FORMULARIO COMPLETO ---
+        if (foundUser != null) {
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = email, onValueChange = { /* No-op */ }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), enabled = false)
+            OutlinedTextField(value = rut, onValueChange = { /* No-op */ }, label = { Text("RUT") }, modifier = Modifier.fillMaxWidth(), enabled = false)
+            OutlinedTextField(value = fechaNacimiento, onValueChange = { fechaNacimiento = it }, label = { Text("Fecha Nacimiento (dd/MM/yyyy)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = telefono, onValueChange = { telefono = it }, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+            OutlinedTextField(value = direccion, onValueChange = { direccion = it }, label = { Text("Dirección") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = region, onValueChange = { region = it }, label = { Text("Región") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = comuna, onValueChange = { comuna = it }, label = { Text("Comuna") }, modifier = Modifier.fillMaxWidth())
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Checkbox(checked = isAdmin, onCheckedChange = { isAdmin = it })
+                Text("Es Administrador")
+            }
+            Row {
+                Button(
+                    onClick = { viewModel.clearFoundUser(); onActionDone() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Cancelar") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = {
+                    val birthDateMillis = try {
+                        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(fechaNacimiento)?.time
+                    } catch (e: Exception) { null }
+
+                    val updatedUser = foundUser.copy(
                         nombre = name.split(" ").firstOrNull() ?: "",
                         apellido = name.split(" ").getOrNull(1) ?: "",
-                        correo = email,
+                        fechaNacimiento = birthDateMillis,
+                        telefono = telefono,
+                        direccion = direccion,
+                        region = region,
+                        comuna = comuna,
                         rol = if (isAdmin) UserRole.ADMIN else UserRole.CLIENTE
                     )
                     viewModel.updateUser(updatedUser)
-                }
-            }, enabled = foundUser != null) { Text("Guardar") }
+                }) { Text("Guardar") }
+            }
         }
     }
 }

@@ -1,7 +1,9 @@
 package com.example.midiventaslvlup.model.repository
 
+import com.example.midiventaslvlup.model.enums.UserRole
 import com.example.midiventaslvlup.network.RetrofitClient
 import com.example.midiventaslvlup.network.dto.RegisterRequest
+import com.example.midiventaslvlup.network.dto.StatsResponse
 import com.example.midiventaslvlup.network.dto.UserResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,22 +11,37 @@ import kotlinx.coroutines.withContext
 class UserRepository {
     private val api = RetrofitClient.apiService
 
-    suspend fun createUser(request: RegisterRequest): Result<UserResponse> {
-        return runApiCall { api.createUser(request) }
+    suspend fun createUser(request: RegisterRequest): Result<Map<String, Any>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.createUser(request)
+                if (response.success && response.data != null) {
+                    Result.success(response.data)
+                } else {
+                    Result.failure(Exception(response.message ?: "Error en la creación"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
     }
 
     suspend fun getUsers(): Result<List<UserResponse>> {
         return runApiCall { api.getUsers() }
     }
-    
+
+    suspend fun getUserStats(): Result<StatsResponse> {
+        return runApiCall { api.getUserStats() }
+    }
+
     suspend fun getUserByEmail(email: String): Result<UserResponse> {
         return withContext(Dispatchers.IO) {
             try {
-                // Obtenemos la lista completa de usuarios desde la API
+                // Primero intentamos con el endpoint específico si existiera
+                // Como no existe, filtramos de la lista general
                 val usersResult = runApiCall { api.getUsers() }
                 usersResult.fold(
                     onSuccess = { users ->
-                        // Filtramos en el cliente para encontrar el usuario por email
                         val user = users.find { it.correo.equals(email, ignoreCase = true) }
                         if (user != null) {
                             Result.success(user)
@@ -33,7 +50,6 @@ class UserRepository {
                         }
                     },
                     onFailure = {
-                        // Si la llamada a getUsers() falla, propagamos el error
                         Result.failure(it)
                     }
                 )
@@ -43,8 +59,22 @@ class UserRepository {
         }
     }
 
+    // ✅ CORREGIDO: Esta función ahora construye el Map<String, String> que el backend espera
     suspend fun updateUser(id: Long, user: UserResponse): Result<UserResponse> {
-        return runApiCall { api.updateUser(id, user) }
+        val updateData = mapOf(
+            "nombre" to user.nombre,
+            "apellido" to user.apellido,
+            "telefono" to (user.telefono ?: ""),
+            "direccion" to (user.direccion ?: ""),
+            "region" to (user.region ?: ""),
+            "comuna" to (user.comuna ?: "")
+        )
+        return runApiCall { api.updateUser(id, updateData) }
+    }
+
+    suspend fun changeUserRole(id: Long, newRole: UserRole): Result<UserResponse> {
+        val roleData = mapOf("rol" to newRole.name)
+        return runApiCall { api.changeUserRole(id, roleData) }
     }
 
     suspend fun deleteUser(id: Long): Result<Unit> {
@@ -63,7 +93,6 @@ class UserRepository {
         }
     }
 
-    // Helper para encapsular llamadas a la API y manejo de errores
     private suspend fun <T> runApiCall(apiCall: suspend () -> com.example.midiventaslvlup.network.dto.ApiResponse<T>): Result<T> {
         return withContext(Dispatchers.IO) {
             try {

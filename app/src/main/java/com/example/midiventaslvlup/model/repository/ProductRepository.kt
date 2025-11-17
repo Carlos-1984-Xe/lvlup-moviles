@@ -1,8 +1,9 @@
 package com.example.midiventaslvlup.model.repository
 
 import com.example.midiventaslvlup.network.ApiService
-import com.example.midiventaslvlup.network.RetrofitClient  // ✅ AGREGAR IMPORT
+import com.example.midiventaslvlup.network.RetrofitClient
 import com.example.midiventaslvlup.network.dto.ProductDto
+import com.example.midiventaslvlup.network.dto.ProductRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -84,7 +85,6 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
         try {
             val response = apiService.getAllCategories()
             if (response.success && response.data != null) {
-                // Agregar "Todos" al inicio
                 val categoriesWithAll = listOf("Todos") + response.data
                 Result.success(categoriesWithAll)
             } else {
@@ -110,27 +110,7 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
             Result.failure(e)
         }
     }
-
-    /**
-     * Obtener productos por rango de precio
-     */
-    suspend fun getProductsByPriceRange(min: Int, max: Int): Result<List<ProductDto>> = withContext(Dispatchers.IO) {
-        try {
-            val response = apiService.getProductsByPriceRange(min, max)
-            if (response.success && response.data != null) {
-                Result.success(response.data)
-            } else {
-                Result.failure(Exception(response.message ?: "Error al obtener productos"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    // ========================================
-    // MÉTODOS DE ADMINISTRACIÓN (CRUD)
-    // ========================================
-
+    
     /**
      * Crear un nuevo producto (Admin)
      */
@@ -143,16 +123,15 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
         stock: Int
     ): Result<ProductDto> = withContext(Dispatchers.IO) {
         try {
-            val productData = mapOf(
-                "nombre" to nombre,
-                "categoria" to categoria,
-                "imagen" to imagen,
-                "descripcion" to descripcion,
-                "precio" to precio,
-                "stock" to stock
+            val productRequest = ProductRequest(
+                nombre = nombre,
+                categoria = categoria,
+                imagen = imagen,
+                descripcion = descripcion,
+                precio = precio,
+                stock = stock
             )
-
-            val response = apiService.createProduct(productData)
+            val response = apiService.createProduct(productRequest)
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
@@ -176,40 +155,19 @@ class ProductRepository(private val apiService: ApiService = RetrofitClient.apiS
         stock: Int
     ): Result<ProductDto> = withContext(Dispatchers.IO) {
         try {
-            val productData = mapOf(
-                "nombre" to nombre,
-                "categoria" to categoria,
-                "imagen" to imagen,
-                "descripcion" to descripcion,
-                "precio" to precio,
-                "stock" to stock
+            val productRequest = ProductRequest(
+                nombre = nombre,
+                categoria = categoria,
+                imagen = imagen,
+                descripcion = descripcion,
+                precio = precio,
+                stock = stock
             )
-
-            val response = apiService.updateProduct(productId, productData)
+            val response = apiService.updateProduct(productId, productRequest)
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
                 Result.failure(Exception(response.message ?: "Error al actualizar producto"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Actualizar solo el stock de un producto
-     */
-    suspend fun updateProductStock(
-        productId: Long,
-        newStock: Int
-    ): Result<ProductDto> = withContext(Dispatchers.IO) {
-        try {
-            val stockData = mapOf("stock" to newStock)
-            val response = apiService.updateProductStock(productId, stockData)
-            if (response.success && response.data != null) {
-                Result.success(response.data)
-            } else {
-                Result.failure(Exception(response.message ?: "Error al actualizar stock"))
             }
         } catch (e: Exception) {
             Result.failure(e)

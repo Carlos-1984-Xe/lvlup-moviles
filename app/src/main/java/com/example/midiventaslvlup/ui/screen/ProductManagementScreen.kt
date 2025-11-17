@@ -27,7 +27,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,7 +46,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +60,6 @@ import com.example.midiventaslvlup.model.repository.ProductRepository
 import com.example.midiventaslvlup.network.dto.ProductDto
 import com.example.midiventaslvlup.viewmodel.ProductViewModel
 import com.example.midiventaslvlup.viewmodel.ProductViewModelFactory
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,10 +68,12 @@ fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
     var currentAction by remember { mutableStateOf(action) }
     var selectedProductId by remember { mutableStateOf<Long?>(null) }
 
-    val productRepository = remember { ProductRepository() }  // ✅ Sin parámetros, usa RetrofitClient
-    val viewModel: ProductViewModel = viewModel(factory = ProductViewModelFactory(productRepository))
+    val viewModel: ProductViewModel = viewModel(
+        factory = ProductViewModelFactory(ProductRepository())
+    )
 
-    val isLoading by viewModel.isLoading.collectAsState()
+    // Ya no necesitamos un isLoading global aquí, cada sub-pantalla lo manejará
+    // val isLoading by viewModel.isLoading.collectAsState()
 
     Scaffold(
         topBar = {
@@ -93,67 +96,54 @@ fun ProductManagementScreen(action: String, onNavigateBack: () -> Unit) {
             )
         }
     ) { paddingValues ->
-        if (isLoading) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator()
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Cargando...")
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top
-            ) {
-                when (currentAction) {
-                    "create" -> CreateProductForm(
-                        viewModel = viewModel,
-                        onProductCreated = onNavigateBack,
-                        onCancel = onNavigateBack
-                    )
-                    "edit" -> EditProductForm(
-                        viewModel = viewModel,
-                        productId = selectedProductId,
-                        onProductUpdated = { currentAction = "list" },
-                        onCancel = {
-                            selectedProductId = null
-                            currentAction = "list"
-                        }
-                    )
-                    "list" -> ListProducts(
-                        viewModel = viewModel,
-                        onEditClick = {
-                            selectedProductId = it
-                            currentAction = "edit"
-                        },
-                        onDeleteClick = {
-                            selectedProductId = it
-                            currentAction = "delete"
-                        }
-                    )
-                    "delete" -> DeleteProductForm(
-                        viewModel = viewModel,
-                        productId = selectedProductId,
-                        onProductDeleted = { currentAction = "list" },
-                        onCancel = {
-                            selectedProductId = null
-                            currentAction = "list"
-                        }
-                    )
-                }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            when (currentAction) {
+                "create" -> CreateProductForm(
+                    viewModel = viewModel,
+                    onProductCreated = onNavigateBack,
+                    onCancel = onNavigateBack
+                )
+                "edit" -> EditProductForm(
+                    viewModel = viewModel,
+                    productId = selectedProductId,
+                    onProductUpdated = { currentAction = "list" },
+                    onCancel = {
+                        selectedProductId = null
+                        currentAction = "list"
+                    }
+                )
+                "list" -> ListProducts(
+                    viewModel = viewModel,
+                    onEditClick = {
+                        selectedProductId = it
+                        currentAction = "edit"
+                    },
+                    onDeleteClick = {
+                        selectedProductId = it
+                        currentAction = "delete"
+                    }
+                )
+                "delete" -> DeleteProductForm(
+                    viewModel = viewModel,
+                    productId = selectedProductId,
+                    onProductDeleted = { currentAction = "list" },
+                    onCancel = {
+                        selectedProductId = null
+                        currentAction = "list"
+                    }
+                )
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CreateProductForm(
     viewModel: ProductViewModel,
@@ -161,14 +151,38 @@ private fun CreateProductForm(
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val productActionSuccess by viewModel.productActionSuccess.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState() // Cargando local
 
     var nombre by remember { mutableStateOf("") }
-    var categoria by remember { mutableStateOf("") }
     var imagen by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
     var precio by remember { mutableStateOf("") }
     var stock by remember { mutableStateOf("") }
+
+    val categories by viewModel.categories.collectAsState()
+    var isDropdownExpanded by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf("") }
+    var isCreatingNewCategory by remember { mutableStateOf(false) }
+    var newCategoryName by remember { mutableStateOf("") }
+    
+    val createNewCategoryOption = "Crear nueva categoría..."
+
+    LaunchedEffect(productActionSuccess) {
+        if (productActionSuccess) {
+            Toast.makeText(context, "Producto creado exitosamente", Toast.LENGTH_SHORT).show()
+            viewModel.resetProductActionSuccess()
+            onProductCreated()
+        }
+    }
+    
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, "Error: $it", Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -179,88 +193,94 @@ private fun CreateProductForm(
     ) {
         Text("Crear Nuevo Producto", style = MaterialTheme.typography.headlineMedium)
 
-        OutlinedTextField(
-            value = nombre,
-            onValueChange = { nombre = it },
-            label = { Text("Nombre del producto") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = categoria,
-            onValueChange = { categoria = it },
-            label = { Text("Categoría") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = imagen,
-            onValueChange = { imagen = it },
-            label = { Text("URL de la imagen") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = descripcion,
-            onValueChange = { descripcion = it },
-            label = { Text("Descripción") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = precio,
-            onValueChange = { precio = it },
-            label = { Text("Precio") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        OutlinedTextField(
-            value = stock,
-            onValueChange = { stock = it },
-            label = { Text("Stock") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
+        OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre del producto") }, modifier = Modifier.fillMaxWidth())
 
-        Row {
-            Button(
-                onClick = onCancel,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        ExposedDropdownMenuBox(
+            expanded = isDropdownExpanded,
+            onExpandedChange = { isDropdownExpanded = !it },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = if (isCreatingNewCategory) "Creando nueva..." else selectedCategory,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Categoría") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded) },
+                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                placeholder = { Text("Selecciona una categoría") }
+            )
+            ExposedDropdownMenu(
+                expanded = isDropdownExpanded,
+                onDismissRequest = { isDropdownExpanded = false }
             ) {
-                Text("Cancelar")
+                categories.filter { it != "Todos" }.forEach { category: String ->
+                    DropdownMenuItem(
+                        text = { Text(category) },
+                        onClick = {
+                            selectedCategory = category
+                            isCreatingNewCategory = false
+                            isDropdownExpanded = false
+                        }
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(createNewCategoryOption) },
+                    onClick = {
+                        isCreatingNewCategory = true
+                        selectedCategory = ""
+                        isDropdownExpanded = false
+                    }
+                )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                val precioInt = precio.toIntOrNull()
-                val stockInt = stock.toIntOrNull()
+        }
 
-                when {
-                    nombre.isBlank() || categoria.isBlank() || imagen.isBlank() ||
-                            descripcion.isBlank() || precio.isBlank() || stock.isBlank() -> {
-                        Toast.makeText(context, "Complete todos los campos", Toast.LENGTH_SHORT).show()
-                    }
-                    precioInt == null -> {
-                        Toast.makeText(context, "Precio debe ser numérico", Toast.LENGTH_SHORT).show()
-                    }
-                    stockInt == null -> {
-                        Toast.makeText(context, "Stock debe ser numérico", Toast.LENGTH_SHORT).show()
-                    }
-                    else -> {
-                        scope.launch {
+        if (isCreatingNewCategory) {
+            OutlinedTextField(
+                value = newCategoryName,
+                onValueChange = { newCategoryName = it },
+                label = { Text("Nombre de la nueva categoría") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        OutlinedTextField(value = imagen, onValueChange = { imagen = it }, label = { Text("URL de la imagen") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = precio, onValueChange = { precio = it }, label = { Text("Precio") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+        OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("Stock") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (isLoading) {
+            CircularProgressIndicator()
+        } else {
+            Row {
+                Button(onClick = onCancel, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Cancelar") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = {
+                    val precioInt = precio.toIntOrNull()
+                    val stockInt = stock.toIntOrNull()
+                    val finalCategory = if (isCreatingNewCategory) newCategoryName else selectedCategory
+
+                    when {
+                        nombre.isBlank() || finalCategory.isBlank() || imagen.isBlank() || descripcion.isBlank() || precio.isBlank() || stock.isBlank() -> {
+                            Toast.makeText(context, "Complete todos los campos", Toast.LENGTH_SHORT).show()
+                        }
+                        precioInt == null -> Toast.makeText(context, "Precio debe ser numérico", Toast.LENGTH_SHORT).show()
+                        stockInt == null -> Toast.makeText(context, "Stock debe ser numérico", Toast.LENGTH_SHORT).show()
+                        else -> {
                             viewModel.createProduct(
                                 nombre = nombre,
-                                categoria = categoria,
+                                categoria = finalCategory,
                                 imagen = imagen,
                                 descripcion = descripcion,
                                 precio = precioInt,
                                 stock = stockInt
-                            ).onSuccess {
-                                Toast.makeText(context, "Producto creado exitosamente", Toast.LENGTH_SHORT).show()
-                                onProductCreated()
-                            }.onFailure { error ->
-                                Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_LONG).show()
-                            }
+                            )
                         }
                     }
+                }) {
+                    Text("Crear")
                 }
-            }) {
-                Text("Crear")
             }
         }
     }
@@ -274,16 +294,33 @@ private fun EditProductForm(
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val productActionSuccess by viewModel.productActionSuccess.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val productToEdit by viewModel.foundProduct.collectAsState()
 
-    var nombre by remember { mutableStateOf("") }
-    var categoria by remember { mutableStateOf("") }
-    var imagen by remember { mutableStateOf("") }
-    var descripcion by remember { mutableStateOf("") }
-    var precio by remember { mutableStateOf("") }
-    var stock by remember { mutableStateOf("") }
+    var nombre by remember(productToEdit) { mutableStateOf(productToEdit?.nombre ?: "") }
+    var categoria by remember(productToEdit) { mutableStateOf(productToEdit?.categoria ?: "") }
+    var imagen by remember(productToEdit) { mutableStateOf(productToEdit?.imagen ?: "") }
+    var descripcion by remember(productToEdit) { mutableStateOf(productToEdit?.descripcion ?: "") }
+    var precio by remember(productToEdit) { mutableStateOf(productToEdit?.precio?.toString() ?: "") }
+    var stock by remember(productToEdit) { mutableStateOf(productToEdit?.stock?.toString() ?: "") }
 
+    LaunchedEffect(productActionSuccess) {
+        if (productActionSuccess) {
+            Toast.makeText(context, "Producto actualizado exitosamente", Toast.LENGTH_SHORT).show()
+            viewModel.resetProductActionSuccess()
+            onProductUpdated()
+        }
+    }
+    
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, "Error: $it", Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
+    
     LaunchedEffect(productId) {
         if (productId != null) {
             viewModel.findProductById(productId)
@@ -292,125 +329,61 @@ private fun EditProductForm(
         }
     }
 
-    LaunchedEffect(productToEdit) {
-        productToEdit?.let {
-            nombre = it.nombre
-            categoria = it.categoria
-            imagen = it.imagen
-            descripcion = it.descripcion
-            precio = it.precio.toString()
-            stock = it.stock.toString()
-        }
-    }
-
     if (productToEdit == null) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+        Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(16.dp))
             Text("Cargando producto...")
         }
-        return
-    }
+    } else {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Editando: ${productToEdit?.nombre ?: "..."}", style = MaterialTheme.typography.headlineMedium)
 
-    Column(
-        modifier = Modifier
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text("Editando: ${productToEdit?.nombre}", style = MaterialTheme.typography.headlineMedium)
+            OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = categoria, onValueChange = { categoria = it }, label = { Text("Categoría") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = imagen, onValueChange = { imagen = it }, label = { Text("URL de la imagen") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = descripcion, onValueChange = { descripcion = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = precio, onValueChange = { precio = it }, label = { Text("Precio") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OutlinedTextField(value = stock, onValueChange = { stock = it }, label = { Text("Stock") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            
+            Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedTextField(
-            value = nombre,
-            onValueChange = { nombre = it },
-            label = { Text("Nombre") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = categoria,
-            onValueChange = { categoria = it },
-            label = { Text("Categoría") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = imagen,
-            onValueChange = { imagen = it },
-            label = { Text("URL de la imagen") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = descripcion,
-            onValueChange = { descripcion = it },
-            label = { Text("Descripción") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = precio,
-            onValueChange = { precio = it },
-            label = { Text("Precio") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        OutlinedTextField(
-            value = stock,
-            onValueChange = { stock = it },
-            label = { Text("Stock") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
+            if(isLoading) {
+                CircularProgressIndicator()
+            } else {
+                 Row {
+                    Button(onClick = onCancel, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Cancelar") }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        val precioInt = precio.toIntOrNull()
+                        val stockInt = stock.toIntOrNull()
 
-        Row {
-            Button(
-                onClick = onCancel,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Cancelar")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                val precioInt = precio.toIntOrNull()
-                val stockInt = stock.toIntOrNull()
-
-                when {
-                    nombre.isBlank() || categoria.isBlank() || imagen.isBlank() ||
-                            descripcion.isBlank() || precio.isBlank() || stock.isBlank() -> {
-                        Toast.makeText(context, "Complete todos los campos", Toast.LENGTH_SHORT).show()
-                    }
-                    precioInt == null -> {
-                        Toast.makeText(context, "Precio debe ser numérico", Toast.LENGTH_SHORT).show()
-                    }
-                    stockInt == null -> {
-                        Toast.makeText(context, "Stock debe ser numérico", Toast.LENGTH_SHORT).show()
-                    }
-                    productId == null -> {
-                        Toast.makeText(context, "Error: ID de producto no válido", Toast.LENGTH_SHORT).show()
-                    }
-                    else -> {
-                        scope.launch {
-                            viewModel.updateProduct(
-                                productId = productId,
-                                nombre = nombre,
-                                categoria = categoria,
-                                imagen = imagen,
-                                descripcion = descripcion,
-                                precio = precioInt,
-                                stock = stockInt
-                            ).onSuccess {
-                                Toast.makeText(context, "Producto actualizado exitosamente", Toast.LENGTH_SHORT).show()
-                                onProductUpdated()
-                            }.onFailure { error ->
-                                Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_LONG).show()
+                        when {
+                            nombre.isBlank() || categoria.isBlank() || imagen.isBlank() || descripcion.isBlank() || precio.isBlank() || stock.isBlank() -> {
+                                Toast.makeText(context, "Complete todos los campos", Toast.LENGTH_SHORT).show()
+                            }
+                            precioInt == null -> Toast.makeText(context, "Precio debe ser numérico", Toast.LENGTH_SHORT).show()
+                            stockInt == null -> Toast.makeText(context, "Stock debe ser numérico", Toast.LENGTH_SHORT).show()
+                            productId == null -> Toast.makeText(context, "Error: ID de producto no válido", Toast.LENGTH_SHORT).show()
+                            else -> {
+                                viewModel.updateProduct(
+                                    productId = productId,
+                                    nombre = nombre,
+                                    categoria = categoria,
+                                    imagen = imagen,
+                                    descripcion = descripcion,
+                                    precio = precioInt,
+                                    stock = stockInt
+                                )
                             }
                         }
-                    }
+                    }) { Text("Guardar") }
                 }
-            }) {
-                Text("Guardar")
             }
         }
     }
@@ -426,10 +399,13 @@ private fun ListProducts(
     val products by viewModel.products.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     var productToShowOptions by remember { mutableStateOf<ProductDto?>(null) }
-
-    val allCategories = categories
+    
+    LaunchedEffect(Unit) {
+        viewModel.loadProducts()
+    }
 
     if (productToShowOptions != null) {
         ProductOptionsDialog(
@@ -452,7 +428,7 @@ private fun ListProducts(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(allCategories) { category ->
+            items(categories) { category ->
                 FilterChip(
                     selected = category == selectedCategory,
                     onClick = { viewModel.selectCategory(category) },
@@ -461,11 +437,13 @@ private fun ListProducts(
             }
         }
 
-        if (products.isEmpty()) {
+        if (isLoading) {
+            Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (products.isEmpty()) {
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -491,9 +469,7 @@ private fun ListProducts(
 @Composable
 private fun ProductItem(product: ProductDto, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -503,22 +479,12 @@ private fun ProductItem(product: ProductDto, onClick: () -> Unit) {
             AsyncImage(
                 model = product.imagen,
                 contentDescription = "Imagen de ${product.nombre}",
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(end = 16.dp),
+                modifier = Modifier.size(100.dp).padding(end = 16.dp),
                 contentScale = ContentScale.Crop
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    product.nombre,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    product.categoria,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Text(product.nombre, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(product.categoria, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Precio: $${product.precio}", style = MaterialTheme.typography.bodyLarge)
                 Text("Stock: ${product.stock}", style = MaterialTheme.typography.bodyMedium)
@@ -538,16 +504,8 @@ private fun ProductOptionsDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = product.nombre) },
         text = { Text("¿Qué deseas hacer con este producto?") },
-        confirmButton = {
-            TextButton(onClick = onEdit) {
-                Text("Editar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDelete) {
-                Text("Eliminar")
-            }
-        }
+        confirmButton = { TextButton(onClick = onEdit) { Text("Editar") } },
+        dismissButton = { TextButton(onClick = onDelete) { Text("Eliminar") } }
     )
 }
 
@@ -559,39 +517,41 @@ private fun DeleteProductForm(
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val productActionSuccess by viewModel.productActionSuccess.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
-    var productIdString by remember { mutableStateOf(productId?.toString() ?: "") }
     var showConfirmDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(productActionSuccess) {
+        if (productActionSuccess) {
+            Toast.makeText(context, "Producto eliminado exitosamente", Toast.LENGTH_SHORT).show()
+            viewModel.resetProductActionSuccess()
+            onProductDeleted()
+        }
+    }
+
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, "Error: $it", Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
 
     if (showConfirmDialog && productId != null) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text("Confirmar eliminación") },
-            text = { Text("¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer.") },
+            text = { Text("¿Estás seguro de que deseas eliminar este producto?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            viewModel.deleteProduct(productId).onSuccess {
-                                Toast.makeText(context, "Producto eliminado exitosamente", Toast.LENGTH_SHORT).show()
-                                showConfirmDialog = false
-                                onProductDeleted()
-                            }.onFailure { error ->
-                                Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_LONG).show()
-                                showConfirmDialog = false
-                            }
-                        }
-                    }
-                ) {
+                TextButton(onClick = {
+                    viewModel.deleteProduct(productId)
+                    showConfirmDialog = false
+                }) {
                     Text("Eliminar", color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancelar")
-                }
-            }
+            dismissButton = { TextButton(onClick = { showConfirmDialog = false }) { Text("Cancelar") } }
         )
     }
 
@@ -601,37 +561,19 @@ private fun DeleteProductForm(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("Borrar Producto", style = MaterialTheme.typography.headlineMedium)
-
-        Text(
-            text = "ID del producto: $productIdString",
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(16.dp)
-        )
-
-        Text(
-            text = "¿Está seguro de que desea eliminar este producto?",
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        Row {
-            Button(
-                onClick = onCancel,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-            ) {
-                Text("Cancelar")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = {
-                    if (productId != null) {
-                        showConfirmDialog = true
-                    } else {
-                        Toast.makeText(context, "Error: ID de producto no válido", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Eliminar")
+        Text(text = "ID del producto: ${productId ?: "N/A"}", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(16.dp))
+        Text(text = "¿Está seguro de que desea eliminar este producto?")
+        
+        if (isLoading) {
+            CircularProgressIndicator()
+        } else {
+            Row {
+                Button(onClick = onCancel, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) { Text("Cancelar") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = { if (productId != null) showConfirmDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Eliminar") }
             }
         }
     }

@@ -21,8 +21,8 @@ interface ApiService {
     // USER MANAGEMENT ENDPOINTS
     // ============================================
 
-    @POST("/api/users")
-    suspend fun createUser(@Body request: RegisterRequest): ApiResponse<UserResponse>
+    @POST("/api/auth/register")
+    suspend fun createUser(@Body request: RegisterRequest): ApiResponse<Map<String, Any>>
 
     @GET("/api/users")
     suspend fun getUsers(): ApiResponse<List<UserResponse>>
@@ -30,8 +30,15 @@ interface ApiService {
     @GET("/api/users/{id}")
     suspend fun getUserById(@Path("id") id: Long): ApiResponse<UserResponse>
 
+    @GET("/api/users/stats")
+    suspend fun getUserStats(): ApiResponse<StatsResponse>
+
+    // ✅ CORREGIDO: El @Body ahora es un Map<String, String> para coincidir con el backend
     @PUT("/api/users/{id}")
-    suspend fun updateUser(@Path("id") id: Long, @Body user: UserResponse): ApiResponse<UserResponse>
+    suspend fun updateUser(@Path("id") id: Long, @Body updateData: Map<String, String>): ApiResponse<UserResponse>
+
+    @PUT("/api/users/{id}/change-role")
+    suspend fun changeUserRole(@Path("id") id: Long, @Body roleData: Map<String, String>): ApiResponse<UserResponse>
 
     @DELETE("/api/users/{id}")
     suspend fun deleteUser(@Path("id") id: Long): Response<ApiResponse<Unit>>
@@ -135,12 +142,13 @@ interface ApiService {
     @GET("/api/orders/user/{userId}/history")
     suspend fun getUserOrderHistory(@Path("userId") userId: Long): ApiResponse<Map<String, Any>>
 
+
     /**
      * Crear un nuevo producto (admin)
      * POST /api/products
      */
     @POST("/api/products")
-    suspend fun createProduct(@Body productData: Map<String, Any>): ApiResponse<ProductDto>
+    suspend fun createProduct(@Body productData: ProductRequest): ApiResponse<ProductDto>
 
     /**
      * Actualizar un producto (admin)
@@ -149,7 +157,7 @@ interface ApiService {
     @PUT("/api/products/{id}")
     suspend fun updateProduct(
         @Path("id") id: Long,
-        @Body productData: Map<String, Any>
+        @Body productData: ProductRequest
     ): ApiResponse<ProductDto>
 
     /**
@@ -169,5 +177,3 @@ interface ApiService {
     @DELETE("/api/products/{id}")
     suspend fun deleteProduct(@Path("id") id: Long): ApiResponse<Unit>
 }
-
-
