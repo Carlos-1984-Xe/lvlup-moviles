@@ -73,19 +73,43 @@ class LoginViewModel(
                     )
                 }.onFailure { error ->
                     Log.e("LoginViewModel", "Error en login: ${error.message}")
+
+                    // Detectar si es un error de autenticación (HTTP 401)
+                    val errorMsg = when {
+                        error.message?.contains("401") == true ||
+                        error.message?.contains("Unauthorized") == true ->
+                            "Credenciales incorrectas. Verifique su correo y contraseña"
+                        else -> error.message ?: "Usuario o contraseña incorrectos"
+                    }
+
                     _loginState.value = _loginState.value.copy(
                         isLoading = false,
                         loginSuccess = false,
-                        errorMessage = error.message ?: "Usuario o contraseña incorrectos"
+                        errorMessage = errorMsg
                     )
                 }
                 // Manejo de errores inesperados
             } catch (e: Exception) {
                 Log.e("LoginViewModel", "Error al iniciar sesión", e)
+
+                // Manejo mejorado de excepciones HTTP
+                val errorMsg = when {
+                    e.message?.contains("401") == true ||
+                    e.message?.contains("Unauthorized") == true ->
+                        "Credenciales incorrectas. Verifique su correo y contraseña"
+                    e.message?.contains("timeout") == true ||
+                    e.message?.contains("timed out") == true ->
+                        "No se pudo conectar con el servidor. Verifique su conexión"
+                    e.message?.contains("Unable to resolve host") == true ||
+                    e.message?.contains("No address") == true ->
+                        "No se pudo conectar con el servidor. Verifique su conexión a internet"
+                    else -> "No se pudo iniciar sesión. Intente nuevamente"
+                }
+
                 _loginState.value = _loginState.value.copy(
                     isLoading = false,
                     loginSuccess = false,
-                    errorMessage = "Error de conexión: ${e.localizedMessage}"
+                    errorMessage = errorMsg
                 )
             }
         }
