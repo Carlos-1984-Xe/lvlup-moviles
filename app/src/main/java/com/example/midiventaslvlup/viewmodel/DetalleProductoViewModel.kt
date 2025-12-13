@@ -47,7 +47,7 @@ class DetalleProductoViewModel(
                     _product.value = product
                 }
                 .onFailure { exception ->
-                    _error.value = exception.message ?: "Error al cargar producto"
+                    _error.value = exception.message ?: "No se pudo cargar la información del producto"
                     _product.value = null
                 }
 

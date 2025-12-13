@@ -10,12 +10,12 @@ class AuthRepository {
     private val api = RetrofitClient.apiService
 
     suspend fun login(correo: String, contrasena: String): Result<LoginResponse> {
-        return try {
+        return try {// 1. Crea el objeto LoginRequest
             val response = api.login(LoginRequest(correo, contrasena))
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error en el login"))
+                Result.failure(Exception(response.message ?: "Credenciales incorrectas. Verifique su correo y contraseña"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -28,7 +28,7 @@ class AuthRepository {
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error en el registro"))
+                Result.failure(Exception(response.message ?: "No se pudo completar el registro. Verifique que el correo no esté registrado"))
             }
         } catch (e: Exception) {
             Result.failure(e)

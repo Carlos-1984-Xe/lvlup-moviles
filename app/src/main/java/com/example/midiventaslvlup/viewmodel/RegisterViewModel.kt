@@ -88,7 +88,7 @@ class RegisterViewModel(private val authRepository: AuthRepository) : ViewModel(
             result.onSuccess {
                 _registerState.update { it.copy(isLoading = false, registerSuccess = true) }
             }.onFailure { exception ->
-                _registerState.update { it.copy(isLoading = false, errorMessage = exception.message ?: "Error desconocido") }
+                _registerState.update { it.copy(isLoading = false, errorMessage = exception.message ?: "No se pudo completar el registro. Intente nuevamente") }
             }
         }
     }

@@ -18,7 +18,7 @@ class UserRepository {
                 if (response.success && response.data != null) {
                     Result.success(response.data)
                 } else {
-                    Result.failure(Exception(response.message ?: "Error en la creación"))
+                    Result.failure(Exception(response.message ?: "No se pudo crear el usuario. Verifique que el correo no esté registrado"))
                 }
             } catch (e: Exception) {
                 Result.failure(e)
@@ -46,7 +46,7 @@ class UserRepository {
                         if (user != null) {
                             Result.success(user)
                         } else {
-                            Result.failure(Exception("Usuario con email '$email' no encontrado"))
+                            Result.failure(Exception("No se encontró ningún usuario con el correo '$email'"))
                         }
                     },
                     onFailure = {
@@ -84,7 +84,7 @@ class UserRepository {
                     Result.success(Unit)
                 } else {
                     val errorBody = response.errorBody()?.string() ?: response.message()
-                    Result.failure(Exception("Error al eliminar usuario: $errorBody"))
+                    Result.failure(Exception("No se pudo eliminar el usuario. $errorBody"))
                 }
             } catch (e: Exception) {
                 Result.failure(e)
@@ -99,7 +99,7 @@ class UserRepository {
                 if (response.success && response.data != null) {
                     Result.success(response.data)
                 } else {
-                    Result.failure(Exception(response.message ?: "Respuesta de API no exitosa"))
+                    Result.failure(Exception(response.message ?: "Error al comunicarse con el servidor. Intente nuevamente"))
                 }
             } catch (e: Exception) {
                 Result.failure(e)

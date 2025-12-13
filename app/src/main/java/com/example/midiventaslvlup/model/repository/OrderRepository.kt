@@ -31,7 +31,7 @@ class OrderRepository(private val apiService: ApiService = RetrofitClient.apiSer
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al crear orden"))
+                Result.failure(Exception(response.message ?: "No se pudo crear la orden. Verifique que tenga productos en el carrito"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -60,7 +60,7 @@ class OrderRepository(private val apiService: ApiService = RetrofitClient.apiSer
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al procesar pago"))
+                Result.failure(Exception(response.message ?: "No se pudo procesar el pago. Verifique los datos de pago e intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -77,7 +77,7 @@ class OrderRepository(private val apiService: ApiService = RetrofitClient.apiSer
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Orden no encontrada"))
+                Result.failure(Exception(response.message ?: "No se encontró la orden solicitada"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -94,7 +94,7 @@ class OrderRepository(private val apiService: ApiService = RetrofitClient.apiSer
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al obtener órdenes"))
+                Result.failure(Exception(response.message ?: "No se pudieron cargar sus órdenes. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -111,7 +111,7 @@ class OrderRepository(private val apiService: ApiService = RetrofitClient.apiSer
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al obtener historial"))
+                Result.failure(Exception(response.message ?: "No se pudo cargar el historial de compras. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)

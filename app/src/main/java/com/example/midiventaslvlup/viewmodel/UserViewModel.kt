@@ -45,9 +45,9 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingUser = true) }
             userRepository.getUserByEmail(email).onSuccess { user ->
-                _uiState.update { it.copy(foundUser = user, isLoadingUser = false, userMessage = "Usuario encontrado") }
+                _uiState.update { it.copy(foundUser = user, isLoadingUser = false, userMessage = "Usuario encontrado exitosamente") }
             }.onFailure {
-                _uiState.update { it.copy(foundUser = null, isLoadingUser = false, userMessage = "Usuario no encontrado") }
+                _uiState.update { it.copy(foundUser = null, isLoadingUser = false, userMessage = "No se encontró ningún usuario con ese correo") }
             }
         }
     }
@@ -55,10 +55,10 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
     fun createUser(request: RegisterRequest) {
         viewModelScope.launch {
             userRepository.createUser(request).onSuccess {
-                _uiState.update { it.copy(userMessage = "Usuario creado exitosamente", userActionSuccess = true) }
+                _uiState.update { it.copy(userMessage = "¡Usuario creado exitosamente!", userActionSuccess = true) }
                 getUsers()
             }.onFailure { error ->
-                _uiState.update { it.copy(userMessage = "Error al crear usuario: ${error.message}") }
+                _uiState.update { it.copy(userMessage = "No se pudo crear el usuario. ${error.message ?: "Verifique que el correo no esté registrado"}") }
             }
         }
     }
@@ -77,7 +77,7 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
                     val profileResult = userRepository.updateUser(originalUser.id, updatedUser)
                     profileResult.onFailure {
                         success = false
-                        finalMessage += "Error al actualizar perfil. "
+                        finalMessage += "No se pudo actualizar el perfil del usuario. "
                     }
                 }
 
@@ -86,12 +86,12 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
                     val roleResult = userRepository.changeUserRole(originalUser.id, updatedUser.rol)
                     roleResult.onFailure {
                         success = false
-                        finalMessage += "Error al cambiar rol."
+                        finalMessage += "No se pudo cambiar el rol del usuario."
                     }
                 }
-                
+
                 if(success) {
-                    finalMessage = "Usuario actualizado correctamente"
+                    finalMessage = "¡Usuario actualizado exitosamente!"
                     getUsers() // Refrescar la lista
                 }
 
@@ -109,13 +109,13 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
         viewModelScope.launch {
             userRepository.getUserByEmail(email).onSuccess { userToDelete ->
                 userRepository.deleteUser(userToDelete.id).onSuccess {
-                    _uiState.update { it.copy(userMessage = "Usuario eliminado", userActionSuccess = true) }
+                    _uiState.update { it.copy(userMessage = "Usuario eliminado exitosamente", userActionSuccess = true) }
                     getUsers()
                 }.onFailure { error ->
-                     _uiState.update { it.copy(userMessage = "Error al eliminar: ${error.message}") }
+                     _uiState.update { it.copy(userMessage = "No se pudo eliminar el usuario. ${error.message ?: "Intente nuevamente"}") }
                 }
             }.onFailure {
-                 _uiState.update { it.copy(userMessage = "Usuario no encontrado") }
+                 _uiState.update { it.copy(userMessage = "No se encontró ningún usuario con ese correo") }
             }
         }
     }

@@ -184,7 +184,7 @@ private fun CreateProductForm(
     
     LaunchedEffect(error) {
         error?.let {
-            Toast.makeText(context, "Error: $it", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.clearError()
         }
     }
@@ -336,7 +336,7 @@ private fun EditProductForm(
     
     LaunchedEffect(error) {
         error?.let {
-            Toast.makeText(context, "Error: $it", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.clearError()
         }
     }
@@ -553,7 +553,7 @@ private fun DeleteProductForm(
 
     LaunchedEffect(error) {
         error?.let {
-            Toast.makeText(context, "Error: $it", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.clearError()
         }
     }

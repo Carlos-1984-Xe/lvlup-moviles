@@ -23,7 +23,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
             if (response.success) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al obtener carrito"))
+                Result.failure(Exception(response.message ?: "No se pudo cargar el carrito. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -39,7 +39,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al obtener carrito"))
+                Result.failure(Exception(response.message ?: "No se pudo cargar el detalle del carrito. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -61,7 +61,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al agregar producto"))
+                Result.failure(Exception(response.message ?: "No se pudo agregar el producto al carrito. Verifique el stock disponible"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -82,7 +82,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al aumentar cantidad"))
+                Result.failure(Exception(response.message ?: "No se pudo aumentar la cantidad. Stock insuficiente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -103,7 +103,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al disminuir cantidad"))
+                Result.failure(Exception(response.message ?: "No se pudo disminuir la cantidad. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -125,7 +125,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al actualizar cantidad"))
+                Result.failure(Exception(response.message ?: "No se pudo actualizar la cantidad. Verifique el stock disponible"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -145,7 +145,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al eliminar producto"))
+                Result.failure(Exception(response.message ?: "No se pudo eliminar el producto del carrito. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -162,7 +162,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al vaciar carrito"))
+                Result.failure(Exception(response.message ?: "No se pudo vaciar el carrito. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -180,7 +180,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
                 // El backend devuelve { success: true, count: X }
                 Result.success(response.count ?: 0)
             } else {
-                Result.failure(Exception(response.message ?: "Error al contar items"))
+                Result.failure(Exception(response.message ?: "No se pudo obtener el total de productos en el carrito"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -197,7 +197,7 @@ class CartRepository(private val apiService: ApiService = RetrofitClient.apiServ
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al obtener items"))
+                Result.failure(Exception(response.message ?: "No se pudieron cargar los productos del carrito"))
             }
         } catch (e: Exception) {
             Result.failure(e)

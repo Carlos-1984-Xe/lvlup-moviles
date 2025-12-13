@@ -117,8 +117,8 @@ class CartViewModel(
                     _error.value = exception.message
                     Toast.makeText(
                         getApplication(),
-                        exception.message ?: "Error al agregar producto",
-                        Toast.LENGTH_SHORT
+                        "No se pudo agregar el producto al carrito. ${exception.message ?: "Intente nuevamente"}",
+                        Toast.LENGTH_LONG
                     ).show()
                 }
 
@@ -145,8 +145,8 @@ class CartViewModel(
                     _error.value = exception.message
                     Toast.makeText(
                         getApplication(),
-                        exception.message ?: "Error al aumentar cantidad",
-                        Toast.LENGTH_SHORT
+                        "No se pudo aumentar la cantidad. ${exception.message ?: "Verifique el stock disponible"}",
+                        Toast.LENGTH_LONG
                     ).show()
                 }
         }
@@ -171,8 +171,8 @@ class CartViewModel(
                     _error.value = exception.message
                     Toast.makeText(
                         getApplication(),
-                        exception.message ?: "Error al disminuir cantidad",
-                        Toast.LENGTH_SHORT
+                        "No se pudo disminuir la cantidad. ${exception.message ?: "Intente nuevamente"}",
+                        Toast.LENGTH_LONG
                     ).show()
                 }
         }
@@ -197,8 +197,8 @@ class CartViewModel(
                     _error.value = exception.message
                     Toast.makeText(
                         getApplication(),
-                        exception.message ?: "Error al actualizar cantidad",
-                        Toast.LENGTH_SHORT
+                        "No se pudo actualizar la cantidad. ${exception.message ?: "Verifique el valor ingresado"}",
+                        Toast.LENGTH_LONG
                     ).show()
                 }
         }
@@ -229,8 +229,8 @@ class CartViewModel(
                     _error.value = exception.message
                     Toast.makeText(
                         getApplication(),
-                        exception.message ?: "Error al eliminar producto",
-                        Toast.LENGTH_SHORT
+                        "No se pudo eliminar el producto del carrito. ${exception.message ?: "Intente nuevamente"}",
+                        Toast.LENGTH_LONG
                     ).show()
                 }
         }
@@ -261,6 +261,11 @@ class CartViewModel(
                 }
                 .onFailure { exception ->
                     _error.value = exception.message
+                    Toast.makeText(
+                        getApplication(),
+                        "No se pudo vaciar el carrito. ${exception.message ?: "Intente nuevamente"}",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
         }
     }
@@ -341,7 +346,7 @@ class CartViewModel(
 
                 Toast.makeText(
                     getApplication(),
-                    "¡Pago procesado exitosamente!",
+                    "¡Compra realizada exitosamente! Su pedido ha sido procesado",
                     Toast.LENGTH_LONG
                 ).show()
 
@@ -350,7 +355,7 @@ class CartViewModel(
                 _error.value = exception.message
                 Toast.makeText(
                     getApplication(),
-                    exception.message ?: "Error al procesar pago",
+                    "No se pudo procesar su compra. ${exception.message ?: "Verifique sus datos e intente nuevamente"}",
                     Toast.LENGTH_LONG
                 ).show()
             }

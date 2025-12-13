@@ -52,7 +52,7 @@ class AdminViewModel(
                 _dashboardState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Error al cargar estadísticas"
+                        errorMessage = error.message ?: "No se pudieron cargar las estadísticas. Intente nuevamente"
                     )
                 }
             }

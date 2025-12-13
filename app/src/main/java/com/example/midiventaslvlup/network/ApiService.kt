@@ -33,7 +33,7 @@ interface ApiService {
     @GET("/api/users/stats")
     suspend fun getUserStats(): ApiResponse<StatsResponse>
 
-    // ✅ CORREGIDO: El @Body ahora es un Map<String, String> para coincidir con el backend
+    // CORREGIDO: El @Body ahora es un Map<String, String> para coincidir con el backend
     @PUT("/api/users/{id}")
     suspend fun updateUser(@Path("id") id: Long, @Body updateData: Map<String, String>): ApiResponse<UserResponse>
 

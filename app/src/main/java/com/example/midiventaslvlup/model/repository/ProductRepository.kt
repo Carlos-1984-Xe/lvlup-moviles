@@ -28,7 +28,7 @@ class ProductRepository(
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al obtener productos"))
+                Result.failure(Exception(response.message ?: "No se pudieron cargar los productos. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -46,7 +46,7 @@ class ProductRepository(
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al obtener productos"))
+                Result.failure(Exception(response.message ?: "No se pudieron cargar los productos disponibles. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -62,7 +62,7 @@ class ProductRepository(
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Producto no encontrado"))
+                Result.failure(Exception(response.message ?: "No se encontró el producto solicitado"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -84,7 +84,7 @@ class ProductRepository(
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al obtener productos"))
+                Result.failure(Exception(response.message ?: "No se pudieron cargar los productos de esta categoría"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -103,7 +103,7 @@ class ProductRepository(
                 val categoriesWithAll = listOf("Todos") + response.data
                 Result.success(categoriesWithAll)
             } else {
-                Result.failure(Exception(response.message ?: "Error al obtener categorías"))
+                Result.failure(Exception(response.message ?: "No se pudieron cargar las categorías. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -119,7 +119,7 @@ class ProductRepository(
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al buscar productos"))
+                Result.failure(Exception(response.message ?: "No se encontraron productos con ese nombre"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -153,7 +153,7 @@ class ProductRepository(
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al crear producto"))
+                Result.failure(Exception(response.message ?: "No se pudo crear el producto. Verifique los datos ingresados"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -189,7 +189,7 @@ class ProductRepository(
             if (response.success && response.data != null) {
                 Result.success(response.data)
             } else {
-                Result.failure(Exception(response.message ?: "Error al actualizar producto"))
+                Result.failure(Exception(response.message ?: "No se pudo actualizar el producto. Verifique los datos ingresados"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -203,7 +203,7 @@ class ProductRepository(
             if (response.success) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception(response.message ?: "Error al eliminar producto"))
+                Result.failure(Exception(response.message ?: "No se pudo eliminar el producto. Intente nuevamente"))
             }
         } catch (e: Exception) {
             Result.failure(e)
